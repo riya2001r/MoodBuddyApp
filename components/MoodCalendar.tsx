@@ -26,8 +26,16 @@ const moodToEmoji: Record<string, Mood> = {
     Happy: '😄',
     Good: '🙂',
     Neutral: '😐',
-    Sad: '😞',
-    Angry: '😡',
+    Bad: '😞',
+    Awful: '😡',
+};
+
+const emojiToMood: Record<Mood, string> = {
+    '😄': 'Happy',
+    '🙂': 'Good',
+    '😐': 'Neutral',
+    '😞': 'Bad',
+    '😡': 'Awful'
 };
 
 const emojis: Mood[] = ['😄', '🙂', '😐', '😞', '😡'];
@@ -75,7 +83,7 @@ const MoodCalendar = () => {
                 return acc;
             }, {});
 
-            setMoodMap(prev => ({ ...prev, ...newEntries }));
+            setMoodMap(prev => ({...prev, ...newEntries}));
         } catch (error) {
             console.error('Error fetching moods:', error);
         }
@@ -87,22 +95,15 @@ const MoodCalendar = () => {
     const handleDayPress = (date: string) => {
         if (isFutureDate(date)) return;
 
-        // Reset states when selecting new date
         setNote('');
         setIsEditingNote(false);
         setSelectedMood(null);
-
         setSelectedDate(date);
-        const entry = moodMap[date];
 
+        const entry = moodMap[date];
         if (entry?.mood) {
-            if (entry.note) {
-                setNote(entry.note);
-                setNoteModalVisible(true);
-            } else {
-                setNoteModalVisible(true);
-                setIsEditingNote(true);
-            }
+            setNote(entry.note || '');
+            setNoteModalVisible(true);
         } else {
             setIsModalVisible(true);
         }
@@ -121,6 +122,30 @@ const MoodCalendar = () => {
         setIsEditingNote(true);
     };
 
+    const createMoodEntry = async () => {
+        if (!selectedDate || !selectedMood) return;
+
+        try {
+            const response = await fetch('http://localhost:3000/api/moods', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: 'user1',
+                    mood: emojiToMood[selectedMood],
+                    note: note,
+                    timestamp: selectedDate
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to create mood');
+            await fetchMoodData();
+        } catch (error) {
+            console.error('Error creating mood:', error);
+        }
+    };
+
     const updateNote = async () => {
         if (!selectedDate || !moodMap[selectedDate]?.id) return;
 
@@ -130,7 +155,7 @@ const MoodCalendar = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ note }),
+                body: JSON.stringify({note}),
             });
             await fetchMoodData();
         } catch (error) {
@@ -143,25 +168,11 @@ const MoodCalendar = () => {
 
         try {
             if (selectedMood) {
-                // Create new mood entry logic here
-                // Then update note if needed
-            }
-
-            if (note.trim() && moodMap[selectedDate]?.id) {
+                await createMoodEntry();
+            } else if (moodMap[selectedDate]?.id) {
                 await updateNote();
             }
 
-            const updated = {
-                ...moodMap,
-                [selectedDate]: {
-                    ...moodMap[selectedDate],
-                    date: selectedDate,
-                    mood: selectedMood || moodMap[selectedDate]?.mood,
-                    note: note || '',
-                },
-            };
-
-            setMoodMap(updated);
             setNote('');
             setSelectedMood(null);
             setIsModalVisible(false);
@@ -239,46 +250,29 @@ const MoodCalendar = () => {
             }}>
                 <View style={styles.modalContent}>
                     <Text style={styles.modalTitle}>
-                        {moodMap[selectedDate]?.note ? 'Journal Entry' : 'Add a quick note'}
+                        {moodMap[selectedDate]?.mood ? 'Journal Entry' : 'Add a quick note'}
                     </Text>
 
-                    {moodMap[selectedDate]?.note && !isEditingNote ? (
-                        <Text style={styles.noteText}>{moodMap[selectedDate].note}</Text>
-                    ) : (
-                        <TextInput
-                            style={styles.textInput}
-                            value={note}
-                            onChangeText={setNote}
-                            placeholder="Write a note..."
-                            multiline
-                            editable={!moodMap[selectedDate]?.note || isEditingNote}
-                        />
-                    )}
+                    <TextInput
+                        style={styles.textInput}
+                        value={note}
+                        onChangeText={setNote}
+                        placeholder="Write a note..."
+                        multiline
+                        editable={!moodMap[selectedDate]?.note || isEditingNote}
+                    />
 
                     <View style={styles.buttonContainer}>
-                        {moodMap[selectedDate]?.note && !isEditingNote ? (
-                            <>
-                                <TouchableOpacity style={styles.cancelButton} onPress={() => setNoteModalVisible(false)}>
-                                    <Text style={styles.cancelButtonText}>Close</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.saveButton} onPress={() => setIsEditingNote(true)}>
-                                    <Text style={styles.saveButtonText}>Edit</Text>
-                                </TouchableOpacity>
-                            </>
-                        ) : (
-                            <>
-                                <TouchableOpacity style={styles.cancelButton} onPress={() => {
-                                    setNoteModalVisible(false);
-                                    setIsEditingNote(false);
-                                    setNote('');
-                                }}>
-                                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
-                                    <Text style={styles.saveButtonText}>Save</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
+                        <TouchableOpacity style={styles.cancelButton} onPress={() => {
+                            setNoteModalVisible(false);
+                            setIsEditingNote(false);
+                            setNote('');
+                        }}>
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
+                            <Text style={styles.saveButtonText}>Save</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -315,7 +309,6 @@ const MoodCalendar = () => {
     );
 };
 
-// Keep the exact same StyleSheet as before
 const styles = StyleSheet.create({
     container: {
         margin: 10,
@@ -386,12 +379,6 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         textAlignVertical: 'top',
         minHeight: 80,
-    },
-    noteText: {
-        width: '100%',
-        fontSize: 16,
-        padding: 10,
-        marginBottom: 20,
     },
     buttonContainer: {
         flexDirection: 'row',
