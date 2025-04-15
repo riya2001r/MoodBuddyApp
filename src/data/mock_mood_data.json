@@ -1,0 +1,45 @@
+[
+    {
+      "user_id": "user123",
+      "emotion": "happy",
+      "mood": "rad",
+      "timestamp": "2025-04-01T10:15:00Z"
+    },
+    {
+      "user_id": "user123",
+      "emotion": "sad",
+      "mood": "awful",
+      "timestamp": "2025-04-02T14:32:00Z"
+    },
+    {
+      "user_id": "user123",
+      "emotion": "neutral",
+      "mood": "meh",
+      "timestamp": "2025-04-03T09:00:00Z"
+    },
+    {
+      "user_id": "user123",
+      "emotion": "surprise",
+      "mood": "good",
+      "timestamp": "2025-04-04T16:45:00Z"
+    },
+    {
+      "user_id": "user123",
+      "emotion": "fear",
+      "mood": "bad",
+      "timestamp": "2025-04-05T11:20:00Z"
+    },
+    {
+      "user_id": "user123",
+      "emotion": "angry",
+      "mood": "awful",
+      "timestamp": "2025-04-06T18:30:00Z"
+    },
+    {
+      "user_id": "user123",
+      "emotion": "disgust",
+      "mood": "bad",
+      "timestamp": "2025-04-07T08:10:00Z"
+    }
+  ]
+  
