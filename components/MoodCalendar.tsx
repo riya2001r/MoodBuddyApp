@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
-import {format, eachDayOfInterval, subYears, startOfMonth, endOfMonth, subMonths} from 'date-fns';
+import {format, eachDayOfInterval, startOfDay, subYears, startOfMonth, endOfMonth, subMonths, isToday} from 'date-fns';
 
 type Mood = '😄' | '🙂' | '😐' | '😞' | '😡';
 
@@ -183,6 +183,11 @@ const MoodCalendar = () => {
         }
     };
 
+    const getModalTitle = () => {
+        if (!selectedDate) return 'How were you?';
+        return isToday(new Date(selectedDate)) ? 'How are you?' : 'How were you?';
+    };
+
     const renderDay = (date: string, state: string) => {
         const entry = moodMap[date];
         const mood = entry?.mood;
@@ -205,13 +210,39 @@ const MoodCalendar = () => {
                 </Text>
                 {mood ? (
                     <View style={styles.moodCircle}>
-                        <Text style={styles.emoji}>{mood}</Text>
+                        <View style={styles.emojiContainer}>
+                            <Text style={[
+                                styles.emojiShadow,
+                                styles.emoji,
+                                isOtherMonth && styles.otherMonthEmoji
+                            ]}>{mood}</Text>
+                            <Text style={[
+                                styles.emojiBase,
+                                styles.emoji,
+                                isOtherMonth && styles.otherMonthEmoji
+                            ]}>{mood}</Text>
+                        </View>
                     </View>
-                ) : isOtherMonth ? null : past ? (
-                    <Text style={styles.plusSign}>＋</Text>
-                ) : (
-                    <Text style={styles.placeholderEmoji}>⚪️</Text>
-                )}
+                ) : future ? (
+                    <View style={styles.placeholderContainer}>
+                        <Text style={[
+                            styles.placeholderEmoji,
+                            styles.emojiShadow
+                        ]}>⚪️</Text>
+                    </View>
+                ) : past ? (
+                    <View style={styles.plusContainer}>
+                        <Text style={[
+                            styles.plusSign,
+                            styles.plusSignShadow,
+                            isOtherMonth && styles.otherMonthPlus
+                        ]}>＋</Text>
+                        <Text style={[
+                            styles.plusSign,
+                            isOtherMonth && styles.otherMonthPlus
+                        ]}>＋</Text>
+                    </View>
+                ) : null}
             </TouchableOpacity>
         );
     };
@@ -237,9 +268,17 @@ const MoodCalendar = () => {
                 hideExtraDays={false}
             />
 
-            <Modal isVisible={isModalVisible} onBackdropPress={() => setIsModalVisible(false)}>
+            <Modal isVisible={isModalVisible}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>How were you?</Text>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>{getModalTitle()}</Text>
+                        <TouchableOpacity
+                            onPress={() => setIsModalVisible(false)}
+                            style={styles.closeButtonContainer}
+                        >
+                            <Text style={styles.closeButton}>×</Text>
+                        </TouchableOpacity>
+                    </View>
                     <TouchableOpacity onPress={() => setIsDatePickerVisible(true)}>
                         <Text style={styles.dateText}>{selectedDate}</Text>
                     </TouchableOpacity>
@@ -250,7 +289,10 @@ const MoodCalendar = () => {
                         keyExtractor={(item) => item}
                         renderItem={({item}) => (
                             <TouchableOpacity style={styles.emojiOption} onPress={() => handleMoodSelect(item)}>
-                                <Text style={styles.emoji}>{item}</Text>
+                                <View style={styles.emojiContainer}>
+                                    <Text style={[styles.emoji, styles.emojiShadow]}>{item}</Text>
+                                    <Text style={[styles.emoji, styles.emojiBase]}>{item}</Text>
+                                </View>
                             </TouchableOpacity>
                         )}
                     />
@@ -263,9 +305,21 @@ const MoodCalendar = () => {
                 setNote('');
             }}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>
-                        {moodMap[selectedDate]?.mood ? 'Journal Entry' : 'Add a quick note'}
-                    </Text>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>
+                            {moodMap[selectedDate]?.mood ? 'Journal Entry' : 'Add a quick note'}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                setNoteModalVisible(false);
+                                setIsEditingNote(false);
+                                setNote('');
+                            }}
+                            style={styles.closeButtonContainer}
+                        >
+                            <Text style={styles.closeButton}>×</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     <TextInput
                         style={styles.textInput}
@@ -291,9 +345,17 @@ const MoodCalendar = () => {
                 </View>
             </Modal>
 
-            <Modal isVisible={isDatePickerVisible} onBackdropPress={() => setIsDatePickerVisible(false)}>
+            <Modal isVisible={isDatePickerVisible}>
                 <View style={styles.datePickerModal}>
-                    <Text style={styles.modalTitle}>Select a Date</Text>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Select a Date</Text>
+                        <TouchableOpacity
+                            onPress={() => setIsDatePickerVisible(false)}
+                            style={styles.closeButtonContainer}
+                        >
+                            <Text style={styles.closeButton}>×</Text>
+                        </TouchableOpacity>
+                    </View>
                     <FlatList
                         data={dates}
                         keyExtractor={(date) => date.toISOString()}
@@ -309,9 +371,14 @@ const MoodCalendar = () => {
                                         {format(date, 'EEEE, MMMM do yyyy')}
                                     </Text>
                                     {moodMap[dateString]?.mood && (
-                                        <Text style={styles.dateItemMood}>
-                                            {moodMap[dateString].mood}
-                                        </Text>
+                                        <View style={styles.emojiContainer}>
+                                            <Text style={[styles.dateItemMood, styles.emojiShadow]}>
+                                                {moodMap[dateString].mood}
+                                            </Text>
+                                            <Text style={styles.dateItemMood}>
+                                                {moodMap[dateString].mood}
+                                            </Text>
+                                        </View>
                                     )}
                                 </TouchableOpacity>
                             );
@@ -330,15 +397,17 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     dayCell: {
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center',
-        height: 60,
+        height: 72,
         width: '100%',
+        paddingTop: 8,
     },
     dayText: {
         fontSize: 16,
         fontWeight: '500',
         color: '#333',
+        marginBottom: 10,
     },
     disabledText: {
         color: '#ccc',
@@ -346,22 +415,77 @@ const styles = StyleSheet.create({
     otherMonthText: {
         color: '#e0e0e0',
     },
+    moodCircle: {
+        backgroundColor: '#f1f1f1',
+        borderRadius: 20,
+        width: 36,
+        height: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 8,
+        borderWidth: 2,
+        borderTopColor: '#fff',
+        borderLeftColor: '#fff',
+        borderRightColor: '#ccc',
+        borderBottomColor: '#ccc',
+    },
+    emojiContainer: {
+        position: 'relative',
+    },
     emoji: {
-        fontSize: 26,
+        fontSize: 20,
+        lineHeight: 36,
+    },
+    emojiBase: {
+        position: 'relative',
+        top: -1,
+        left: -1,
+    },
+    emojiShadow: {
+        position: 'absolute',
+        color: 'rgba(0,0,0,0.15)',
+        top: 1,
+        left: 1,
+    },
+    otherMonthEmoji: {
+        color: '#e0e0e0',
+    },
+    placeholderContainer: {
+        width: 38,
+        height: 38,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     placeholderEmoji: {
-        fontSize: 24,
+        fontSize: 32,
         color: '#ccc',
+    },
+    plusContainer: {
+        width: 38,
+        height: 38,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     plusSign: {
         fontSize: 26,
         color: '#ccc',
+        lineHeight: 42,
+        position: 'relative',
+        top: -1,
+        left: -1,
     },
-    moodCircle: {
-        backgroundColor: '#f1f1f1',
-        borderRadius: 30,
-        padding: 6,
-        marginTop: 2,
+    plusSignShadow: {
+        position: 'absolute',
+        color: 'rgba(0,0,0,0.15)',
+        top: 1,
+        left: 1,
+    },
+    otherMonthPlus: {
+        color: '#e0e0e0',
     },
     modalContent: {
         backgroundColor: '#fff',
@@ -369,10 +493,27 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: 'center',
     },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+        marginBottom: 15,
+        position: 'relative',
+    },
     modalTitle: {
         fontSize: 20,
         fontWeight: '600',
-        marginBottom: 15,
+        textAlign: 'center',
+    },
+    closeButtonContainer: {
+        position: 'absolute',
+        right: 0,
+    },
+    closeButton: {
+        fontSize: 28,
+        color: '#666',
+        paddingHorizontal: 10,
     },
     dateText: {
         marginBottom: 15,
