@@ -1,4 +1,3 @@
-// components/MoodCalendar.tsx
 // @ts-nocheck
 import React, {useState, useEffect} from 'react';
 import {
@@ -254,16 +253,32 @@ const MoodCalendar = () => {
                 dayComponent={({date, state}) => renderDay(date.dateString, state)}
                 onMonthChange={(month) => setCurrentMonth(new Date(month.dateString))}
                 theme={{
-                    calendarBackground: '#fff',
-                    textSectionTitleColor: '#333',
+                    calendarBackground: '#e3f2fd',
+                    textSectionTitleColor: '#1976d2',
+                    textMonthFontFamily: 'Roboto',
+                    textMonthFontSize: 20,
+                    textMonthFontWeight: 'bold',
+                    textMonthFontColor: '#0d47a1',
+                    'stylesheet.calendar.header': {
+                        header: {
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: 10,
+                            backgroundColor: '#bbdefb',
+                            marginBottom: 10,
+                        },
+                    },
                     'stylesheet.calendar.main': {
                         week: {
                             marginTop: 0,
                             flexDirection: 'row',
-                            justifyContent: 'space-around'
+                            justifyContent: 'space-around',
+                            backgroundColor: '#e3f2fd',
                         }
                     },
-                    textDisabledColor: '#ccc',
+                    textDisabledColor: '#90a4ae',
+                    arrowColor: '#1976d2',
                 }}
                 hideExtraDays={false}
             />
@@ -395,6 +410,7 @@ const styles = StyleSheet.create({
         margin: 10,
         borderRadius: 10,
         overflow: 'hidden',
+        backgroundColor: '#e3f2fd',
     },
     dayCell: {
         justifyContent: 'flex-start',
@@ -410,16 +426,16 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     disabledText: {
-        color: '#ccc',
+        color: '#90a4ae',
     },
     otherMonthText: {
-        color: '#e0e0e0',
+        color: '#cfd8dc',
     },
     moodCircle: {
         backgroundColor: '#f1f1f1',
         borderRadius: 20,
-        width: 36,
-        height: 36,
+        width: 32,
+        height: 32,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
@@ -452,7 +468,7 @@ const styles = StyleSheet.create({
         left: 1,
     },
     otherMonthEmoji: {
-        color: '#e0e0e0',
+        color: '#cfd8dc',
     },
     placeholderContainer: {
         width: 38,
@@ -461,8 +477,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     placeholderEmoji: {
-        fontSize: 32,
-        color: '#ccc',
+        fontSize: 20,
+        color: '#90a4ae',
     },
     plusContainer: {
         width: 38,
@@ -471,8 +487,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     plusSign: {
-        fontSize: 26,
-        color: '#ccc',
+        fontSize: 20,
+        color: '#90a4ae',
         lineHeight: 42,
         position: 'relative',
         top: -1,
@@ -485,7 +501,7 @@ const styles = StyleSheet.create({
         left: 1,
     },
     otherMonthPlus: {
-        color: '#e0e0e0',
+        color: '#cfd8dc',
     },
     modalContent: {
         backgroundColor: '#fff',
@@ -505,6 +521,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '600',
         textAlign: 'center',
+        color: '#0d47a1',
     },
     closeButtonContainer: {
         position: 'absolute',
@@ -512,13 +529,13 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         fontSize: 28,
-        color: '#666',
+        color: '#1976d2',
         paddingHorizontal: 10,
     },
     dateText: {
         marginBottom: 15,
         fontSize: 16,
-        color: '#666',
+        color: '#1976d2',
         textDecorationLine: 'underline',
     },
     emojiList: {
@@ -529,7 +546,7 @@ const styles = StyleSheet.create({
     },
     textInput: {
         width: '100%',
-        borderColor: '#ddd',
+        borderColor: '#90caf9',
         borderWidth: 1,
         borderRadius: 10,
         padding: 10,
@@ -545,21 +562,23 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     cancelButton: {
-        backgroundColor: '#eee',
+        backgroundColor: '#e3f2fd',
         padding: 12,
         borderRadius: 10,
         width: '45%',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#90caf9',
     },
     saveButton: {
-        backgroundColor: '#007bff',
+        backgroundColor: '#1976d2',
         padding: 12,
         borderRadius: 10,
         width: '45%',
         alignItems: 'center',
     },
     cancelButtonText: {
-        color: '#333',
+        color: '#0d47a1',
         fontWeight: 'bold',
     },
     saveButtonText: {
@@ -579,13 +598,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        backgroundColor: '#fff',
     },
     selectedDateItem: {
         backgroundColor: '#e3f2fd',
     },
     dateItemText: {
         fontSize: 16,
-        color: '#333',
+        color: '#1976d2',
     },
     dateItemMood: {
         fontSize: 24,
