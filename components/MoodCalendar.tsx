@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
-import {format, eachDayOfInterval, startOfDay, subYears, startOfMonth, endOfMonth} from 'date-fns';
+import {format, eachDayOfInterval, subYears, startOfMonth, endOfMonth, subMonths} from 'date-fns';
 
 type Mood = '😄' | '🙂' | '😐' | '😞' | '😡';
 
@@ -23,19 +23,19 @@ type MoodEntry = {
 };
 
 const moodToEmoji: Record<string, Mood> = {
-    Happy: '😄',
-    Good: '🙂',
-    Neutral: '😐',
-    Bad: '😞',
-    Awful: '😡',
+    happy: '😄',
+    good: '🙂',
+    neutral: '😐',
+    bad: '😞',
+    awful: '😡',
 };
 
 const emojiToMood: Record<Mood, string> = {
-    '😄': 'Happy',
-    '🙂': 'Good',
-    '😐': 'Neutral',
-    '😞': 'Bad',
-    '😡': 'Awful'
+    '😄': 'happy',
+    '🙂': 'good',
+    '😐': 'neutral',
+    '😞': 'bad',
+    '😡': 'awful'
 };
 
 const emojis: Mood[] = ['😄', '🙂', '😐', '😞', '😡'];
@@ -65,7 +65,7 @@ const MoodCalendar = () => {
 
     const fetchMoodData = async () => {
         try {
-            const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+            const startDate = format(subMonths(startOfMonth(currentMonth), 3), 'yyyy-MM-dd');
             const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
             const response = await fetch(
@@ -188,6 +188,7 @@ const MoodCalendar = () => {
         const mood = entry?.mood;
         const past = isPastDate(date);
         const future = isFutureDate(date);
+        const isOtherMonth = state === 'disabled';
 
         return (
             <TouchableOpacity
@@ -195,14 +196,18 @@ const MoodCalendar = () => {
                 disabled={future}
                 style={styles.dayCell}
             >
-                <Text style={[styles.dayText, future && styles.disabledText]}>
+                <Text style={[
+                    styles.dayText,
+                    (future || isOtherMonth) && styles.disabledText,
+                    isOtherMonth && styles.otherMonthText
+                ]}>
                     {String(new Date(date).getDate()).padStart(2, '0')}
                 </Text>
                 {mood ? (
                     <View style={styles.moodCircle}>
                         <Text style={styles.emoji}>{mood}</Text>
                     </View>
-                ) : past ? (
+                ) : isOtherMonth ? null : past ? (
                     <Text style={styles.plusSign}>＋</Text>
                 ) : (
                     <Text style={styles.placeholderEmoji}>⚪️</Text>
@@ -220,7 +225,16 @@ const MoodCalendar = () => {
                 theme={{
                     calendarBackground: '#fff',
                     textSectionTitleColor: '#333',
+                    'stylesheet.calendar.main': {
+                        week: {
+                            marginTop: 0,
+                            flexDirection: 'row',
+                            justifyContent: 'space-around'
+                        }
+                    },
+                    textDisabledColor: '#ccc',
                 }}
+                hideExtraDays={false}
             />
 
             <Modal isVisible={isModalVisible} onBackdropPress={() => setIsModalVisible(false)}>
@@ -319,6 +333,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         height: 60,
+        width: '100%',
     },
     dayText: {
         fontSize: 16,
@@ -327,6 +342,9 @@ const styles = StyleSheet.create({
     },
     disabledText: {
         color: '#ccc',
+    },
+    otherMonthText: {
+        color: '#e0e0e0',
     },
     emoji: {
         fontSize: 26,
