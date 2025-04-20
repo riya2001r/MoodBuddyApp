@@ -17,7 +17,7 @@ import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
 import {format, eachDayOfInterval, startOfDay, subYears, startOfMonth, endOfMonth, subMonths, isToday} from 'date-fns';
 import styles from '../assets/MoodCalendarStyles';
-import EmojiSVG from './EmojiSVG'; // Import the separated component
+import EmojiSVG from './EmojiSVG';
 import * as moodApi from '../api/api';
 
 const screenWidth = Dimensions.get('window').width;
@@ -37,7 +37,7 @@ const showToast = (message: string) => {
         // iOS alert as toast alternative
         Alert.alert('', message, [{text: 'OK'}], {cancelable: true});
     } else {
-        // Web implementation - create a temporary div element
+        // For Web (Testing)
         const webToast = document.createElement('div');
         webToast.innerText = message;
         webToast.style.position = 'fixed';
@@ -133,24 +133,17 @@ const MoodCalendar = () => {
         }
     };
 
-    // Fixed: Separate handler specifically for emoji clicks
     const handleEmojiPress = (date: string) => {
-        // Don't handle future dates
         if (isFutureDate(date)) return;
 
         const entry = moodMap[date];
         if (entry?.mood) {
-            // Set the selected date
             setSelectedDate(date);
 
-            // Set the note and mood from the entry
             setNote(entry.note || '');
             setSelectedMood(entry.mood);
 
-            // This is an existing entry, so we're going to edit
             setIsEditingNote(true);
-
-            // Important: Navigate to the entry list page
             setShowEntryListPage(true);
         }
     };
@@ -161,27 +154,7 @@ const MoodCalendar = () => {
         setIsDatePickerVisible(false);
     };
 
-    const renderEmojiItem = ({item}: any) => (
-        <Animated.View style={{
-            transform: [{scale: emojiScale}],
-            margin: 5  // Reduced margin to fit more emojis
-        }}>
-            <TouchableOpacity
-                style={{
-                    padding: 5,
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                }}
-                onPress={() => handleMoodSelect(item)}
-                activeOpacity={0.7}
-            >
-                <EmojiSVG type={item} size={40} />
-            </TouchableOpacity>
-        </Animated.View>
-    );
-
     const handleMoodSelect = (mood: Mood) => {
-        // Pulse animation when selecting a mood
         Animated.sequence([
             Animated.timing(emojiScale, {toValue: 1.2, duration: 150, useNativeDriver: true}),
             Animated.timing(emojiScale, {toValue: 1, duration: 150, useNativeDriver: true})
@@ -190,7 +163,6 @@ const MoodCalendar = () => {
         setSelectedMood(mood);
         setIsModalVisible(false);
 
-        // Fixed: Make sure we open the note modal after selecting a mood
         setTimeout(() => {
             setNoteModalVisible(true);
             setIsEditingNote(false);
