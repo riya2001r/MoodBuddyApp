@@ -1,18 +1,22 @@
-// @ts-nocheck
+// @ts-ignore
 import React, {useState, useEffect} from 'react';
 import {
     View,
     Text,
-    StyleSheet,
     TouchableOpacity,
     TextInput,
     FlatList,
+    SafeAreaView,
+    ToastAndroid, // For Android
+    Platform,
+    Alert, // For iOS
 } from 'react-native';
 import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
 import {format, eachDayOfInterval, startOfDay, subYears, startOfMonth, endOfMonth, subMonths, isToday} from 'date-fns';
+import styles from '../assets/MoodCalendarStyles';
 
-type Mood = '😄' | '🙂' | '😐' | '😞' | '😡';
+type Mood = '😲' | '😢' | '😐' | '😀' | '😨' | '🤢' | '😠';
 
 type MoodEntry = {
     id?: string;
@@ -22,22 +26,61 @@ type MoodEntry = {
 };
 
 const moodToEmoji: Record<string, Mood> = {
-    happy: '😄',
-    good: '🙂',
+    surprise: '😲',
+    sad: '😢',
     neutral: '😐',
-    bad: '😞',
-    awful: '😡',
+    happy: '😀',
+    fear: '😨',
+    disgust: '🤢',
+    angry: '😠'
 };
 
 const emojiToMood: Record<Mood, string> = {
-    '😄': 'happy',
-    '🙂': 'good',
+    '😲': 'surprise',
+    '😢': 'sad',
     '😐': 'neutral',
-    '😞': 'bad',
-    '😡': 'awful'
+    '😀': 'happy',
+    '😨': 'fear',
+    '🤢': 'disgust',
+    '😠': 'angry'
 };
 
-const emojis: Mood[] = ['😄', '🙂', '😐', '😞', '😡'];
+const emojis: Mood[] = ['😲', '😢', '😐', '😀', '😨', '🤢', '😠'];
+
+// Function to show toast message across platforms
+// Cross-platform toast function that works on Android, iOS, and Web
+const showToast = (message: string) => {
+    if (Platform.OS === 'android') {
+        // Android native toast
+        ToastAndroid.show(message, ToastAndroid.SHORT);
+    } else if (Platform.OS === 'ios') {
+        // iOS alert as toast alternative
+        Alert.alert('', message, [{text: 'OK'}], {cancelable: true});
+    } else {
+        // Web implementation - create a temporary div element
+        const webToast = document.createElement('div');
+        webToast.innerText = message;
+        webToast.style.position = 'fixed';
+        webToast.style.bottom = '60px';
+        webToast.style.left = '50%';
+        webToast.style.transform = 'translateX(-50%)';
+        webToast.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        webToast.style.color = 'white';
+        webToast.style.padding = '12px 24px';
+        webToast.style.borderRadius = '4px';
+        webToast.style.fontSize = '16px';
+        webToast.style.zIndex = '9999';
+
+        document.body.appendChild(webToast);
+
+        // Remove the toast after 2 seconds
+        setTimeout(() => {
+            if (document.body.contains(webToast)) {
+                document.body.removeChild(webToast);
+            }
+        }, 2000);
+    }
+};
 
 const MoodCalendar = () => {
     const [moodMap, setMoodMap] = useState<Record<string, MoodEntry>>({});
@@ -49,6 +92,8 @@ const MoodCalendar = () => {
     const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [isEditingNote, setIsEditingNote] = useState(false);
+    const [showEntryListPage, setShowEntryListPage] = useState(false);
+    const [entries, setEntries] = useState<MoodEntry[]>([]);
 
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
@@ -62,6 +107,14 @@ const MoodCalendar = () => {
         fetchMoodData();
     }, [currentMonth]);
 
+    useEffect(() => {
+        if (showEntryListPage && selectedDate) {
+            // Filter entries for selected date only
+            const entryForSelectedDate = moodMap[selectedDate] ? [moodMap[selectedDate]] : [];
+            setEntries(entryForSelectedDate);
+        }
+    }, [showEntryListPage, selectedDate, moodMap]);
+
     const fetchMoodData = async () => {
         try {
             const startDate = format(subMonths(startOfMonth(currentMonth), 3), 'yyyy-MM-dd');
@@ -70,6 +123,11 @@ const MoodCalendar = () => {
             const response = await fetch(
                 `http://localhost:3000/api/moods/filter?userId=user1&startDate=${startDate}&endDate=${endDate}`
             );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch mood data');
+            }
+
             const apiData = await response.json();
 
             const newEntries = apiData.reduce((acc: Record<string, MoodEntry>, entry: any) => {
@@ -85,6 +143,7 @@ const MoodCalendar = () => {
             setMoodMap(prev => ({...prev, ...newEntries}));
         } catch (error) {
             console.error('Error fetching moods:', error);
+            showToast('Something went wrong!!!');
         }
     };
 
@@ -102,7 +161,8 @@ const MoodCalendar = () => {
         const entry = moodMap[date];
         if (entry?.mood) {
             setNote(entry.note || '');
-            setNoteModalVisible(true);
+            // Go to list view for this specific date
+            setShowEntryListPage(true);
         } else {
             setIsModalVisible(true);
         }
@@ -117,6 +177,13 @@ const MoodCalendar = () => {
     const handleMoodSelect = (mood: Mood) => {
         setSelectedMood(mood);
         setIsModalVisible(false);
+        setNoteModalVisible(true);
+        setIsEditingNote(true);
+    };
+
+    const handleEntryPress = (entry: MoodEntry) => {
+        setSelectedDate(entry.date);
+        setNote(entry.note || '');
         setNoteModalVisible(true);
         setIsEditingNote(true);
     };
@@ -138,10 +205,14 @@ const MoodCalendar = () => {
                 })
             });
 
-            if (!response.ok) throw new Error('Failed to create mood');
+            if (!response.ok) {
+                throw new Error('Failed to create mood');
+            }
+
             await fetchMoodData();
         } catch (error) {
             console.error('Error creating mood:', error);
+            showToast('Something went wrong!!!');
         }
     };
 
@@ -149,16 +220,22 @@ const MoodCalendar = () => {
         if (!selectedDate || !moodMap[selectedDate]?.id) return;
 
         try {
-            await fetch(`http://localhost:3000/api/moods/${moodMap[selectedDate].id}`, {
+            const response = await fetch(`http://localhost:3000/api/moods/${moodMap[selectedDate].id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({note}),
             });
+
+            if (!response.ok) {
+                throw new Error('Failed to update note');
+            }
+
             await fetchMoodData();
         } catch (error) {
             console.error('Error updating note:', error);
+            showToast('Something went wrong!!!');
         }
     };
 
@@ -179,12 +256,23 @@ const MoodCalendar = () => {
             setIsEditingNote(false);
         } catch (error) {
             console.error('Error saving mood:', error);
+            showToast('Something went wrong!!!');
         }
     };
 
     const getModalTitle = () => {
         if (!selectedDate) return 'How were you?';
         return isToday(new Date(selectedDate)) ? 'How are you?' : 'How were you?';
+    };
+
+    const formatDateForDisplay = (date: string) => {
+        if (!date) return '';
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) return '';
+
+        return isToday(dateObj)
+            ? `Today, ${format(dateObj, 'MMMM d')}`
+            : `${format(dateObj, 'EEEE')}, ${format(dateObj, 'MMMM d')}`;
     };
 
     const renderDay = (date: string, state: string) => {
@@ -246,83 +334,275 @@ const MoodCalendar = () => {
         );
     };
 
-    return (
-        <View style={styles.container}>
-            <Calendar
-                markingType="custom"
-                dayComponent={({date, state}) => renderDay(date.dateString, state)}
-                onMonthChange={(month) => setCurrentMonth(new Date(month.dateString))}
-                theme={{
-                    calendarBackground: '#e3f2fd',
-                    textSectionTitleColor: '#1976d2',
-                    textMonthFontFamily: 'Roboto',
-                    textMonthFontSize: 20,
-                    textMonthFontWeight: 'bold',
-                    textMonthFontColor: '#0d47a1',
-                    'stylesheet.calendar.header': {
-                        header: {
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: 10,
-                            backgroundColor: '#bbdefb',
-                            marginBottom: 10,
+    const renderEntryItem = ({item}: { item: MoodEntry }) => {
+        return (
+            <TouchableOpacity
+                style={styles.entryItem}
+                onPress={() => handleEntryPress(item)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.journalTable}>
+                    <View style={styles.journalRow}>
+                        <View style={styles.journalEmoticonCell}>
+                            <Text style={styles.journalEmoticonText}>
+                                {item.mood}
+                            </Text>
+                        </View>
+                        <View style={styles.journalInfoCell}>
+                            <Text style={styles.journalDateText}>
+                                {formatDateForDisplay(item.date)}
+                            </Text>
+                            <Text
+                                style={styles.journalNoteText}
+                                numberOfLines={2}
+                                ellipsizeMode="tail"
+                            >
+                                {item.note}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    // Main calendar view
+    if (!showEntryListPage) {
+        // @ts-ignore
+        return (
+            <View style={styles.container}>
+                <Calendar
+                    markingType="custom"
+                    dayComponent={({date, state}: { date: any, state: any }) => renderDay(date.dateString, state)}
+                    onMonthChange={(month: {
+                        dateString: string | number | Date;
+                    }) => setCurrentMonth(new Date(month.dateString))}
+                    theme={{
+                        calendarBackground: '#e3f2fd',
+                        textSectionTitleColor: '#1976d2',
+                        textMonthFontFamily: 'Roboto',
+                        textMonthFontSize: 20,
+                        textMonthFontWeight: 'bold',
+                        textMonthFontColor: '#0d47a1',
+                        'stylesheet.calendar.header': {
+                            header: {
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: 10,
+                                backgroundColor: '#bbdefb',
+                                marginBottom: 10,
+                            },
                         },
-                    },
-                    'stylesheet.calendar.main': {
-                        week: {
-                            marginTop: 0,
-                            flexDirection: 'row',
-                            justifyContent: 'space-around',
-                            backgroundColor: '#e3f2fd',
-                        }
-                    },
-                    textDisabledColor: '#90a4ae',
-                    arrowColor: '#1976d2',
-                }}
-                hideExtraDays={false}
+                        'stylesheet.calendar.main': {
+                            week: {
+                                marginTop: 0,
+                                flexDirection: 'row',
+                                justifyContent: 'space-around',
+                                backgroundColor: '#e3f2fd',
+                            }
+                        },
+                        textDisabledColor: '#90a4ae',
+                        arrowColor: '#1976d2',
+                    }}
+                    hideExtraDays={false}
+                />
+
+                <Modal
+                    isVisible={isModalVisible}
+                    onBackdropPress={() => setIsModalVisible(false)}
+                    style={styles.bottomModal}
+                    swipeDirection={['down']}
+                    onSwipeComplete={() => setIsModalVisible(false)}
+                >
+                    <View style={styles.compactModalContent}>
+                        <View style={styles.dragIndicator}/>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>{getModalTitle()}</Text>
+                            <TouchableOpacity
+                                onPress={() => setIsModalVisible(false)}
+                                style={styles.closeButtonContainer}
+                            >
+                                <Text style={styles.closeButton}>×</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => setIsDatePickerVisible(true)}
+                            style={styles.dateContainer}
+                        >
+                            <Text style={styles.dateText}>{selectedDate}</Text>
+                        </TouchableOpacity>
+                        <View style={styles.centeredContent}>
+                            <FlatList
+                                data={emojis}
+                                horizontal
+                                contentContainerStyle={styles.emojiList}
+                                keyExtractor={(item) => item}
+                                renderItem={({item}) => (
+                                    <TouchableOpacity style={styles.emojiOption} onPress={() => handleMoodSelect(item)}>
+                                        <View style={styles.emojiContainer}>
+                                            <Text style={[styles.emoji, styles.emojiShadow]}>{item}</Text>
+                                            <Text style={[styles.emoji, styles.emojiBase]}>{item}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                )}
+                            />
+                        </View>
+                    </View>
+                </Modal>
+
+                <Modal
+                    isVisible={noteModalVisible}
+                    onBackdropPress={() => {
+                        setNoteModalVisible(false);
+                        setIsEditingNote(false);
+                        setNote('');
+                    }}
+                    style={styles.bottomModal}
+                    swipeDirection={['down']}
+                    onSwipeComplete={() => {
+                        setNoteModalVisible(false);
+                        setIsEditingNote(false);
+                        setNote('');
+                    }}
+                >
+                    <View style={styles.compactModalContent}>
+                        <View style={styles.dragIndicator}/>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                Edit Note
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setNoteModalVisible(false);
+                                    setIsEditingNote(false);
+                                    setNote('');
+                                }}
+                                style={styles.closeButtonContainer}
+                            >
+                                <Text style={styles.closeButton}>×</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <TextInput
+                            style={styles.compactTextInput}
+                            value={note}
+                            onChangeText={setNote}
+                            placeholder="Write a note..."
+                            multiline
+                        />
+
+                        <View style={styles.buttonContainer}>
+                            <TouchableOpacity style={styles.cancelButton} onPress={() => {
+                                setNoteModalVisible(false);
+                                setIsEditingNote(false);
+                                setNote('');
+                            }}>
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
+                                <Text style={styles.saveButtonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+
+                <Modal isVisible={isDatePickerVisible}>
+                    <View style={styles.datePickerModal}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select a Date</Text>
+                            <TouchableOpacity
+                                onPress={() => setIsDatePickerVisible(false)}
+                                style={styles.closeButtonContainer}
+                            >
+                                <Text style={styles.closeButton}>×</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={dates}
+                            keyExtractor={(date) => date.toISOString()}
+                            renderItem={({item: date}) => {
+                                const dateString = format(date, 'yyyy-MM-dd');
+                                const isSelected = dateString === selectedDate;
+                                return (
+                                    <TouchableOpacity
+                                        style={[styles.dateItem, isSelected && styles.selectedDateItem]}
+                                        onPress={() => handleDateSelect(date)}
+                                    >
+                                        <Text style={styles.dateItemText}>
+                                            {format(date, 'EEEE, MMMM do yyyy')}
+                                        </Text>
+                                        {moodMap[dateString]?.mood && (
+                                            <View style={styles.emojiContainer}>
+                                                <Text style={[styles.dateItemMood, styles.emojiShadow]}>
+                                                    {moodMap[dateString].mood}
+                                                </Text>
+                                                <Text style={styles.dateItemMood}>
+                                                    {moodMap[dateString].mood}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            }}
+                        />
+                    </View>
+                </Modal>
+            </View>
+        );
+    }
+
+    // Entry list page for selected date only
+    return (
+        <SafeAreaView style={styles.entryListContainer}>
+            <View style={styles.entryListHeader}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => setShowEntryListPage(false)}
+                >
+                    <Text style={styles.backButtonText}>← Calendar</Text>
+                </TouchableOpacity>
+                <Text style={styles.entryListTitle}>
+                    {format(selectedDate || '', 'EEEE, MMMM do yyyy')}
+                </Text>
+                <View style={styles.placeholder}/>
+            </View>
+
+            <FlatList
+                data={entries}
+                renderItem={renderEntryItem}
+                keyExtractor={(item) => item.date}
+                contentContainerStyle={styles.entryListContent}
+                ItemSeparatorComponent={() => <View style={styles.entrySeparator}/>}
+                ListEmptyComponent={
+                    <View style={styles.journalTable}>
+                        <Text style={{textAlign: 'center', padding: 20, color: '#7f8c8d'}}>
+                            No entry for this date
+                        </Text>
+                    </View>
+                }
             />
 
-            <Modal isVisible={isModalVisible}>
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>{getModalTitle()}</Text>
-                        <TouchableOpacity
-                            onPress={() => setIsModalVisible(false)}
-                            style={styles.closeButtonContainer}
-                        >
-                            <Text style={styles.closeButton}>×</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity onPress={() => setIsDatePickerVisible(true)}>
-                        <Text style={styles.dateText}>{selectedDate}</Text>
-                    </TouchableOpacity>
-                    <FlatList
-                        data={emojis}
-                        horizontal
-                        contentContainerStyle={styles.emojiList}
-                        keyExtractor={(item) => item}
-                        renderItem={({item}) => (
-                            <TouchableOpacity style={styles.emojiOption} onPress={() => handleMoodSelect(item)}>
-                                <View style={styles.emojiContainer}>
-                                    <Text style={[styles.emoji, styles.emojiShadow]}>{item}</Text>
-                                    <Text style={[styles.emoji, styles.emojiBase]}>{item}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        )}
-                    />
-                </View>
-            </Modal>
-
-            <Modal isVisible={noteModalVisible} onBackdropPress={() => {
-                setNoteModalVisible(false);
-                setIsEditingNote(false);
-                setNote('');
-            }}>
-                <View style={styles.modalContent}>
+            <Modal
+                isVisible={noteModalVisible}
+                onBackdropPress={() => {
+                    setNoteModalVisible(false);
+                    setIsEditingNote(false);
+                    setNote('');
+                }}
+                style={styles.bottomModal}
+                swipeDirection={['down']}
+                onSwipeComplete={() => {
+                    setNoteModalVisible(false);
+                    setIsEditingNote(false);
+                    setNote('');
+                }}
+            >
+                <View style={styles.compactModalContent}>
+                    <View style={styles.dragIndicator}/>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>
-                            {moodMap[selectedDate]?.mood ? 'Journal Entry' : 'Add a quick note'}
+                            {isEditingNote ? 'Edit Note' : 'Add a quick note'}
                         </Text>
                         <TouchableOpacity
                             onPress={() => {
@@ -337,12 +617,11 @@ const MoodCalendar = () => {
                     </View>
 
                     <TextInput
-                        style={styles.textInput}
+                        style={styles.compactTextInput}
                         value={note}
                         onChangeText={setNote}
                         placeholder="Write a note..."
                         multiline
-                        editable={!moodMap[selectedDate]?.note || isEditingNote}
                     />
 
                     <View style={styles.buttonContainer}>
@@ -359,257 +638,8 @@ const MoodCalendar = () => {
                     </View>
                 </View>
             </Modal>
-
-            <Modal isVisible={isDatePickerVisible}>
-                <View style={styles.datePickerModal}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Select a Date</Text>
-                        <TouchableOpacity
-                            onPress={() => setIsDatePickerVisible(false)}
-                            style={styles.closeButtonContainer}
-                        >
-                            <Text style={styles.closeButton}>×</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <FlatList
-                        data={dates}
-                        keyExtractor={(date) => date.toISOString()}
-                        renderItem={({item: date}) => {
-                            const dateString = format(date, 'yyyy-MM-dd');
-                            const isSelected = dateString === selectedDate;
-                            return (
-                                <TouchableOpacity
-                                    style={[styles.dateItem, isSelected && styles.selectedDateItem]}
-                                    onPress={() => handleDateSelect(date)}
-                                >
-                                    <Text style={styles.dateItemText}>
-                                        {format(date, 'EEEE, MMMM do yyyy')}
-                                    </Text>
-                                    {moodMap[dateString]?.mood && (
-                                        <View style={styles.emojiContainer}>
-                                            <Text style={[styles.dateItemMood, styles.emojiShadow]}>
-                                                {moodMap[dateString].mood}
-                                            </Text>
-                                            <Text style={styles.dateItemMood}>
-                                                {moodMap[dateString].mood}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        }}
-                    />
-                </View>
-            </Modal>
-        </View>
+        </SafeAreaView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        margin: 10,
-        borderRadius: 10,
-        overflow: 'hidden',
-        backgroundColor: '#e3f2fd',
-    },
-    dayCell: {
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-        height: 72,
-        width: '100%',
-        paddingTop: 8,
-    },
-    dayText: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: '#333',
-        marginBottom: 10,
-    },
-    disabledText: {
-        color: '#90a4ae',
-    },
-    otherMonthText: {
-        color: '#cfd8dc',
-    },
-    moodCircle: {
-        backgroundColor: '#f1f1f1',
-        borderRadius: 20,
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 2, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 8,
-        borderWidth: 2,
-        borderTopColor: '#fff',
-        borderLeftColor: '#fff',
-        borderRightColor: '#ccc',
-        borderBottomColor: '#ccc',
-    },
-    emojiContainer: {
-        position: 'relative',
-    },
-    emoji: {
-        fontSize: 20,
-        lineHeight: 36,
-    },
-    emojiBase: {
-        position: 'relative',
-        top: -1,
-        left: -1,
-    },
-    emojiShadow: {
-        position: 'absolute',
-        color: 'rgba(0,0,0,0.15)',
-        top: 1,
-        left: 1,
-    },
-    otherMonthEmoji: {
-        color: '#cfd8dc',
-    },
-    placeholderContainer: {
-        width: 38,
-        height: 38,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    placeholderEmoji: {
-        fontSize: 20,
-        color: '#90a4ae',
-    },
-    plusContainer: {
-        width: 38,
-        height: 38,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    plusSign: {
-        fontSize: 20,
-        color: '#90a4ae',
-        lineHeight: 42,
-        position: 'relative',
-        top: -1,
-        left: -1,
-    },
-    plusSignShadow: {
-        position: 'absolute',
-        color: 'rgba(0,0,0,0.15)',
-        top: 1,
-        left: 1,
-    },
-    otherMonthPlus: {
-        color: '#cfd8dc',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 20,
-        alignItems: 'center',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-        marginBottom: 15,
-        position: 'relative',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        textAlign: 'center',
-        color: '#0d47a1',
-    },
-    closeButtonContainer: {
-        position: 'absolute',
-        right: 0,
-    },
-    closeButton: {
-        fontSize: 28,
-        color: '#1976d2',
-        paddingHorizontal: 10,
-    },
-    dateText: {
-        marginBottom: 15,
-        fontSize: 16,
-        color: '#1976d2',
-        textDecorationLine: 'underline',
-    },
-    emojiList: {
-        paddingHorizontal: 16,
-    },
-    emojiOption: {
-        paddingHorizontal: 8,
-    },
-    textInput: {
-        width: '100%',
-        borderColor: '#90caf9',
-        borderWidth: 1,
-        borderRadius: 10,
-        padding: 10,
-        fontSize: 16,
-        backgroundColor: '#f9f9f9',
-        marginBottom: 20,
-        textAlignVertical: 'top',
-        minHeight: 80,
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        width: '100%',
-        justifyContent: 'space-between',
-    },
-    cancelButton: {
-        backgroundColor: '#e3f2fd',
-        padding: 12,
-        borderRadius: 10,
-        width: '45%',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#90caf9',
-    },
-    saveButton: {
-        backgroundColor: '#1976d2',
-        padding: 12,
-        borderRadius: 10,
-        width: '45%',
-        alignItems: 'center',
-    },
-    cancelButtonText: {
-        color: '#0d47a1',
-        fontWeight: 'bold',
-    },
-    saveButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    datePickerModal: {
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 20,
-        maxHeight: '80%',
-    },
-    dateItem: {
-        padding: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-    },
-    selectedDateItem: {
-        backgroundColor: '#e3f2fd',
-    },
-    dateItemText: {
-        fontSize: 16,
-        color: '#1976d2',
-    },
-    dateItemMood: {
-        fontSize: 24,
-    },
-});
 
 export default MoodCalendar;
