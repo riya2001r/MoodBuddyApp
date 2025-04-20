@@ -15,13 +15,10 @@ import {
 } from 'react-native';
 import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
-import {format, eachDayOfInterval, startOfDay, subYears, startOfMonth, endOfMonth, subMonths, isToday} from 'date-fns';
+import {format, eachDayOfInterval, subYears, startOfMonth, endOfMonth, subMonths, isToday} from 'date-fns';
 import styles from '../assets/MoodCalendarStyles';
 import EmojiSVG from './EmojiSVG';
 import * as moodApi from '../api/api';
-
-const screenWidth = Dimensions.get('window').width;
-
 
 // Define types for moods
 export type Mood = '😲' | '😢' | '😐' | '😀' | '😨' | '🤢' | '😠';
