@@ -9,8 +9,9 @@ import {
     SafeAreaView,
     ToastAndroid, // For Android
     Platform,
+    Dimensions,
     Alert, // For iOS
-    Animated,
+    Animated, ScrollView,
 } from 'react-native';
 import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
@@ -18,6 +19,9 @@ import {format, eachDayOfInterval, startOfDay, subYears, startOfMonth, endOfMont
 import styles from '../assets/MoodCalendarStyles';
 import EmojiSVG from './EmojiSVG'; // Import the separated component
 import * as moodApi from '../api/api';
+
+const screenWidth = Dimensions.get('window').width;
+
 
 // Define types for moods
 export type Mood = '😲' | '😢' | '😐' | '😀' | '😨' | '🤢' | '😠';
@@ -157,11 +161,30 @@ const MoodCalendar = () => {
         setIsDatePickerVisible(false);
     };
 
+    const renderEmojiItem = ({item}: any) => (
+        <Animated.View style={{
+            transform: [{scale: emojiScale}],
+            margin: 5  // Reduced margin to fit more emojis
+        }}>
+            <TouchableOpacity
+                style={{
+                    padding: 5,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}
+                onPress={() => handleMoodSelect(item)}
+                activeOpacity={0.7}
+            >
+                <EmojiSVG type={item} size={40} />
+            </TouchableOpacity>
+        </Animated.View>
+    );
+
     const handleMoodSelect = (mood: Mood) => {
         // Pulse animation when selecting a mood
         Animated.sequence([
-            Animated.timing(emojiScale, { toValue: 1.2, duration: 150, useNativeDriver: true }),
-            Animated.timing(emojiScale, { toValue: 1, duration: 150, useNativeDriver: true })
+            Animated.timing(emojiScale, {toValue: 1.2, duration: 150, useNativeDriver: true}),
+            Animated.timing(emojiScale, {toValue: 1, duration: 150, useNativeDriver: true})
         ]).start();
 
         setSelectedMood(mood);
@@ -254,7 +277,6 @@ const MoodCalendar = () => {
 
         return (
             <View style={styles.dayCell}>
-                {/* Cell content container */}
                 <TouchableOpacity
                     onPress={() => handleDayPress(date)}
                     disabled={future}
@@ -266,23 +288,15 @@ const MoodCalendar = () => {
                     }}
                     activeOpacity={0.7}
                 >
-                    <Text style={[
-                        styles.dayText,
-                        (future || isOtherMonth) && styles.disabledText,
-                        isOtherMonth && styles.otherMonthText
-                    ]}>
-                        {String(new Date(date).getDate()).padStart(2, '0')}
-                    </Text>
-
-                    {/* FIXED: Refactored emoji rendering to make it more clickable */}
                     {mood ? (
                         <View
                             style={{
-                                minHeight: 36,  // Ensure enough height for the touchable area
-                                minWidth: 36,   // Ensure enough width for the touchable area
+                                height: 36,
+                                width: 36,
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                zIndex: 5      // Ensure this is on top
+                                zIndex: 5,
+                                marginBottom: 10
                             }}
                         >
                             <TouchableOpacity
@@ -291,29 +305,45 @@ const MoodCalendar = () => {
                                     handleEmojiPress(date);
                                 }}
                                 style={{
-                                    padding: 8,          // Increase touch target
-                                    borderRadius: 20,    // Rounded touch target
+                                    padding: 8,
+                                    borderRadius: 20,
                                     backgroundColor: 'transparent',
                                 }}
                                 activeOpacity={0.6}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} // Increase hit area
+                                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                             >
                                 <EmojiSVG
                                     type={mood}
-                                    size={26}
+                                    size={36}
                                     style={isOtherMonth ? {opacity: 0.5} : {}}
                                     animated={false}
                                 />
                             </TouchableOpacity>
                         </View>
                     ) : future ? (
-                        <Text style={[styles.placeholderEmoji, styles.emojiShadow]}>⚪️</Text>
+                        <View style={{height: 36, marginBottom: 10}}>
+                            <Text style={styles.plusCircle}></Text>
+                        </View>
                     ) : past ? (
-                        <Text style={[
-                            styles.plusSign,
-                            isOtherMonth && styles.otherMonthPlus
-                        ]}>＋</Text>
+                        <TouchableOpacity
+                            style={[styles.plusCircle, {marginBottom: 10}]}
+                            onPress={() => handleDayPress(date)}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[
+                                styles.plusSign,
+                                isOtherMonth && styles.otherMonthPlus
+                            ]}>＋</Text>
+                        </TouchableOpacity>
                     ) : null}
+
+                    <Text style={[
+                        styles.dayText,
+                        (future || isOtherMonth) && styles.disabledText,
+                        isOtherMonth && styles.otherMonthText
+                    ]}>
+                        {String(new Date(date).getDate()).padStart(2, '0')}
+                    </Text>
                 </TouchableOpacity>
             </View>
         );
@@ -415,26 +445,45 @@ const MoodCalendar = () => {
                             <Text style={styles.dateText}>{selectedDate}</Text>
                         </TouchableOpacity>
                         <View style={styles.centeredContent}>
-                            <FlatList
-                                data={emojis}
-                                horizontal
-                                contentContainerStyle={styles.emojiList}
-                                keyExtractor={(item) => item}
-                                renderItem={({item}) => (
-                                    <Animated.View style={{
-                                        transform: [{scale: emojiScale}],
-                                        margin: 10
-                                    }}>
+                            <ScrollView
+                                contentContainerStyle={[
+                                    styles.emojiList,
+                                    {
+                                        flexDirection: 'row',
+                                        flexWrap: 'wrap',
+                                        justifyContent: 'center',
+                                    }
+                                ]}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                {emojis.map((item) => (
+                                    <Animated.View
+                                        key={item}
+                                        style={{
+                                            transform: [{ scale: emojiScale }],
+                                            margin: Dimensions.get('window').width < 375 ? 4 : 6,
+                                            // Adjust width based on screen size for better responsiveness
+                                            width: Dimensions.get('window').width < 375 ?
+                                                (Dimensions.get('window').width / 4 - 20) :
+                                                (Dimensions.get('window').width / 5 - 20)
+                                        }}
+                                    >
                                         <TouchableOpacity
-                                            style={styles.emojiOption}
+                                            style={[
+                                                styles.emojiOption,
+                                                Dimensions.get('window').width < 375 && styles.emojiOptionSmall
+                                            ]}
                                             onPress={() => handleMoodSelect(item)}
                                             activeOpacity={0.7}
                                         >
-                                            <EmojiSVG type={item} size={45} />
+                                            <EmojiSVG
+                                                type={item}
+                                                size={Dimensions.get('window').width < 375 ? 38 : 45}
+                                            />
                                         </TouchableOpacity>
                                     </Animated.View>
-                                )}
-                            />
+                                ))}
+                            </ScrollView>
                         </View>
                     </View>
                 </Modal>
@@ -480,7 +529,7 @@ const MoodCalendar = () => {
 
                         {selectedMood && (
                             <View style={styles.selectedMoodContainer}>
-                                <EmojiSVG type={selectedMood} size={40} animated={true} />
+                                <EmojiSVG type={selectedMood} size={40} animated={true}/>
                             </View>
                         )}
 
@@ -526,7 +575,7 @@ const MoodCalendar = () => {
                                             {format(date, 'EEEE, MMMM do yyyy')}
                                         </Text>
                                         {moodMap[dateString]?.mood && (
-                                            <EmojiSVG type={moodMap[dateString].mood} size={30} />
+                                            <EmojiSVG type={moodMap[dateString].mood} size={30}/>
                                         )}
                                     </TouchableOpacity>
                                 );
@@ -546,7 +595,7 @@ const MoodCalendar = () => {
                     style={styles.backButton}
                     onPress={() => setShowEntryListPage(false)}
                 >
-                    <Text style={styles.backButtonText}>← Calendar</Text>
+                    <Text style={styles.backButtonText}>← Back</Text>
                 </TouchableOpacity>
                 <Text style={styles.entryListTitle}>
                     {format(selectedDate || '', 'EEEE, MMMM do yyyy')}
@@ -610,7 +659,7 @@ const MoodCalendar = () => {
 
                     {entries[0]?.mood && (
                         <View style={styles.selectedMoodContainer}>
-                            <EmojiSVG type={entries[0].mood} size={40} animated={true} />
+                            <EmojiSVG type={entries[0].mood} size={40} animated={true}/>
                         </View>
                     )}
 

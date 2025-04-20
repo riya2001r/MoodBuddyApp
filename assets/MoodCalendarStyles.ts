@@ -6,6 +6,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         overflow: 'hidden',
         backgroundColor: '#e3f2fd',
+        paddingBottom: 30
     },
     modalContent: {
         backgroundColor: 'white',
@@ -65,17 +66,78 @@ const styles = StyleSheet.create({
         lineHeight: 24,
     },
     dayCell: {
-        justifyContent: 'flex-start',
+        justifyContent: 'center',
         alignItems: 'center',
         height: 72,
         width: '100%',
-        paddingTop: 8,
+        padding: 5,
     },
     dayText: {
         fontSize: 16,
         fontWeight: '500',
         color: '#333',
-        marginBottom: 10,
+        marginTop: 2,
+    },
+    plusCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#90a4ae',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 1, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 1,
+        elevation: 2,
+    },
+    circleContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f1f1f1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 1, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+    },
+
+    // Style for the touchable emoji container - matching the circle container
+    emojiTouchable: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f1f1f1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 1, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+    },
+    plusSign: {
+        fontSize: 20,
+        color: '#e0e0e0',
+        textAlign: 'center',
+        lineHeight: 32,
+    },
+    placeholderCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#f9f9f9',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
     },
     disabledText: {
         color: '#90a4ae',
@@ -138,14 +200,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    plusSign: {
-        fontSize: 20,
-        color: '#90a4ae',
-        lineHeight: 42,
-        position: 'relative',
-        top: -1,
-        left: -1,
-    },
     plusSignShadow: {
         position: 'absolute',
         color: 'rgba(0,0,0,0.15)',
@@ -184,12 +238,12 @@ const styles = StyleSheet.create({
         color: '#1976d2',
         textDecorationLine: 'underline',
     },
-    emojiList: {
-        paddingHorizontal: 16,
-    },
-    emojiOption: {
-        paddingHorizontal: 8,
-    },
+    // emojiList: {
+    //     paddingHorizontal: 16,
+    // },
+    // emojiOption: {
+    //     paddingHorizontal: 8,
+    // },
     textInput: {
         width: '100%',
         borderColor: '#90caf9',
@@ -201,6 +255,26 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         textAlignVertical: 'top',
         minHeight: 80,
+    },
+    scrollIndicator: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 5,
+        height: 10,
+    },
+    scrollDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#e0e0e0',
+        marginHorizontal: 2,
+    },
+    scrollDotActive: {
+        backgroundColor: '#1976d2',
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     buttonContainer: {
         flexDirection: 'row',
@@ -366,6 +440,19 @@ const styles = StyleSheet.create({
     dateContainer: {
         alignItems: 'center',
         marginVertical: 10,
+    },
+    emojiList: {
+        paddingHorizontal: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emojiOption: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 4,
+    },
+    emojiOptionSmall: {
+        padding: 2,
     },
     centeredContent: {
         alignItems: 'center',
