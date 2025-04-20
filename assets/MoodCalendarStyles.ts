@@ -204,8 +204,11 @@ const styles = StyleSheet.create({
     },
     buttonContainer: {
         flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
         width: '100%',
-        justifyContent: 'space-between',
+        marginBottom: 15,
+        position: 'relative',
     },
     cancelButton: {
         backgroundColor: '#e3f2fd',
@@ -389,6 +392,21 @@ const styles = StyleSheet.create({
         textAlignVertical: 'top',
         minHeight: 100,
         maxHeight: 150,
+    },
+    selectedMoodContainer: {
+        alignItems: 'center',
+        marginBottom: 15,
+        marginTop: 10,
+    },
+    moodCircleEnhanced: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.27,
+        shadowRadius: 4.65,
+        elevation: 6,
+        backgroundColor: '#fff',
+        borderRadius: 25,
+        padding: 5,
     },
 });
 

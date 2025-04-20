@@ -1,4 +1,4 @@
-// @ts-ignore
+// MoodCalendar.tsx
 import React, {useState, useEffect} from 'react';
 import {
     View,
@@ -10,45 +10,21 @@ import {
     ToastAndroid, // For Android
     Platform,
     Alert, // For iOS
+    Animated,
 } from 'react-native';
 import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
 import {format, eachDayOfInterval, startOfDay, subYears, startOfMonth, endOfMonth, subMonths, isToday} from 'date-fns';
 import styles from '../assets/MoodCalendarStyles';
+import EmojiSVG from './EmojiSVG'; // Import the separated component
+import * as moodApi from '../api/api';
 
-type Mood = '😲' | '😢' | '😐' | '😀' | '😨' | '🤢' | '😠';
-
-type MoodEntry = {
-    id?: string;
-    date: string;
-    mood?: Mood;
-    note?: string;
-};
-
-const moodToEmoji: Record<string, Mood> = {
-    surprise: '😲',
-    sad: '😢',
-    neutral: '😐',
-    happy: '😀',
-    fear: '😨',
-    disgust: '🤢',
-    angry: '😠'
-};
-
-const emojiToMood: Record<Mood, string> = {
-    '😲': 'surprise',
-    '😢': 'sad',
-    '😐': 'neutral',
-    '😀': 'happy',
-    '😨': 'fear',
-    '🤢': 'disgust',
-    '😠': 'angry'
-};
+// Define types for moods
+export type Mood = '😲' | '😢' | '😐' | '😀' | '😨' | '🤢' | '😠';
 
 const emojis: Mood[] = ['😲', '😢', '😐', '😀', '😨', '🤢', '😠'];
 
 // Function to show toast message across platforms
-// Cross-platform toast function that works on Android, iOS, and Web
 const showToast = (message: string) => {
     if (Platform.OS === 'android') {
         // Android native toast
@@ -83,7 +59,7 @@ const showToast = (message: string) => {
 };
 
 const MoodCalendar = () => {
-    const [moodMap, setMoodMap] = useState<Record<string, MoodEntry>>({});
+    const [moodMap, setMoodMap] = useState<Record<string, moodApi.MoodEntry>>({});
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [noteModalVisible, setNoteModalVisible] = useState(false);
@@ -93,7 +69,8 @@ const MoodCalendar = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [showEntryListPage, setShowEntryListPage] = useState(false);
-    const [entries, setEntries] = useState<MoodEntry[]>([]);
+    const [entries, setEntries] = useState<moodApi.MoodEntry[]>([]);
+    const [emojiScale] = useState(new Animated.Value(1));
 
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
@@ -120,29 +97,9 @@ const MoodCalendar = () => {
             const startDate = format(subMonths(startOfMonth(currentMonth), 3), 'yyyy-MM-dd');
             const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
-            const response = await fetch(
-                `http://localhost:3000/api/moods/filter?userId=user1&startDate=${startDate}&endDate=${endDate}`
-            );
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch mood data');
-            }
-
-            const apiData = await response.json();
-
-            const newEntries = apiData.reduce((acc: Record<string, MoodEntry>, entry: any) => {
-                acc[entry.date] = {
-                    id: entry.id,
-                    date: entry.date,
-                    mood: moodToEmoji[entry.mood],
-                    note: entry.note
-                };
-                return acc;
-            }, {});
-
+            const newEntries = await moodApi.fetchMoodData(startDate, endDate);
             setMoodMap(prev => ({...prev, ...newEntries}));
         } catch (error) {
-            console.error('Error fetching moods:', error);
             showToast('Something went wrong!!!');
         }
     };
@@ -150,21 +107,47 @@ const MoodCalendar = () => {
     const isPastDate = (date: string) => new Date(date) < new Date(todayStr);
     const isFutureDate = (date: string) => new Date(date) > new Date(todayStr);
 
+    // Handle click on any date cell (background)
     const handleDayPress = (date: string) => {
         if (isFutureDate(date)) return;
 
-        setNote('');
-        setIsEditingNote(false);
-        setSelectedMood(null);
         setSelectedDate(date);
 
         const entry = moodMap[date];
         if (entry?.mood) {
+            // If this date already has a mood entry, show its details
             setNote(entry.note || '');
-            // Go to list view for this specific date
+            setSelectedMood(entry.mood);
+            setIsEditingNote(true);
             setShowEntryListPage(true);
         } else {
+            // If this date doesn't have a mood yet, open the mood selection modal
+            setNote('');
+            setSelectedMood(null);
+            setIsEditingNote(false);
             setIsModalVisible(true);
+        }
+    };
+
+    // Fixed: Separate handler specifically for emoji clicks
+    const handleEmojiPress = (date: string) => {
+        // Don't handle future dates
+        if (isFutureDate(date)) return;
+
+        const entry = moodMap[date];
+        if (entry?.mood) {
+            // Set the selected date
+            setSelectedDate(date);
+
+            // Set the note and mood from the entry
+            setNote(entry.note || '');
+            setSelectedMood(entry.mood);
+
+            // This is an existing entry, so we're going to edit
+            setIsEditingNote(true);
+
+            // Important: Navigate to the entry list page
+            setShowEntryListPage(true);
         }
     };
 
@@ -175,85 +158,71 @@ const MoodCalendar = () => {
     };
 
     const handleMoodSelect = (mood: Mood) => {
+        // Pulse animation when selecting a mood
+        Animated.sequence([
+            Animated.timing(emojiScale, { toValue: 1.2, duration: 150, useNativeDriver: true }),
+            Animated.timing(emojiScale, { toValue: 1, duration: 150, useNativeDriver: true })
+        ]).start();
+
         setSelectedMood(mood);
         setIsModalVisible(false);
-        setNoteModalVisible(true);
-        setIsEditingNote(true);
+
+        // Fixed: Make sure we open the note modal after selecting a mood
+        setTimeout(() => {
+            setNoteModalVisible(true);
+            setIsEditingNote(false);
+        }, 300);
     };
 
-    const handleEntryPress = (entry: MoodEntry) => {
+    const handleEntryPress = (entry: moodApi.MoodEntry) => {
         setSelectedDate(entry.date);
         setNote(entry.note || '');
+        setSelectedMood(entry.mood || null);
         setNoteModalVisible(true);
         setIsEditingNote(true);
-    };
-
-    const createMoodEntry = async () => {
-        if (!selectedDate || !selectedMood) return;
-
-        try {
-            const response = await fetch('http://localhost:3000/api/moods', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userId: 'user1',
-                    mood: emojiToMood[selectedMood],
-                    note: note,
-                    timestamp: selectedDate
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create mood');
-            }
-
-            await fetchMoodData();
-        } catch (error) {
-            console.error('Error creating mood:', error);
-            showToast('Something went wrong!!!');
-        }
-    };
-
-    const updateNote = async () => {
-        if (!selectedDate || !moodMap[selectedDate]?.id) return;
-
-        try {
-            const response = await fetch(`http://localhost:3000/api/moods/${moodMap[selectedDate].id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({note}),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to update note');
-            }
-
-            await fetchMoodData();
-        } catch (error) {
-            console.error('Error updating note:', error);
-            showToast('Something went wrong!!!');
-        }
     };
 
     const saveMoodAndNote = async () => {
         if (!selectedDate) return;
 
         try {
-            if (selectedMood) {
-                await createMoodEntry();
+            if (selectedMood && !moodMap[selectedDate]?.id) {
+                await moodApi.createMoodEntry(selectedDate, selectedMood, note);
             } else if (moodMap[selectedDate]?.id) {
-                await updateNote();
+                await moodApi.updateNote(moodMap[selectedDate].id!, note);
+
+                // Immediately update the local state for better UI response
+                const updatedEntry = {
+                    ...moodMap[selectedDate],
+                    note: note
+                };
+
+                // Update the moodMap with the new note
+                setMoodMap(prev => ({
+                    ...prev,
+                    [selectedDate]: updatedEntry
+                }));
+
+                // Update entries array if we're viewing the entry list
+                if (showEntryListPage) {
+                    setEntries([updatedEntry]);
+                }
             }
 
-            setNote('');
-            setSelectedMood(null);
-            setIsModalVisible(false);
+            // Now fetch the latest data from API to ensure everything is synced
+            await fetchMoodData();
+
             setNoteModalVisible(false);
-            setIsEditingNote(false);
+
+            // Show success message
+            showToast(moodMap[selectedDate]?.id ? 'Note updated successfully!' : 'Mood saved successfully!');
+
+            // Keep the note value in the state if we're staying on the same page
+            if (!showEntryListPage) {
+                setNote('');
+                setSelectedMood(null);
+                setIsEditingNote(false);
+            }
         } catch (error) {
             console.error('Error saving mood:', error);
             showToast('Something went wrong!!!');
@@ -275,6 +244,7 @@ const MoodCalendar = () => {
             : `${format(dateObj, 'EEEE')}, ${format(dateObj, 'MMMM d')}`;
     };
 
+    // Day cell rendering with clickable emoji
     const renderDay = (date: string, state: string) => {
         const entry = moodMap[date];
         const mood = entry?.mood;
@@ -283,58 +253,73 @@ const MoodCalendar = () => {
         const isOtherMonth = state === 'disabled';
 
         return (
-            <TouchableOpacity
-                onPress={() => handleDayPress(date)}
-                disabled={future}
-                style={styles.dayCell}
-            >
-                <Text style={[
-                    styles.dayText,
-                    (future || isOtherMonth) && styles.disabledText,
-                    isOtherMonth && styles.otherMonthText
-                ]}>
-                    {String(new Date(date).getDate()).padStart(2, '0')}
-                </Text>
-                {mood ? (
-                    <View style={styles.moodCircle}>
-                        <View style={styles.emojiContainer}>
-                            <Text style={[
-                                styles.emojiShadow,
-                                styles.emoji,
-                                isOtherMonth && styles.otherMonthEmoji
-                            ]}>{mood}</Text>
-                            <Text style={[
-                                styles.emojiBase,
-                                styles.emoji,
-                                isOtherMonth && styles.otherMonthEmoji
-                            ]}>{mood}</Text>
+            <View style={styles.dayCell}>
+                {/* Cell content container */}
+                <TouchableOpacity
+                    onPress={() => handleDayPress(date)}
+                    disabled={future}
+                    style={{
+                        flex: 1,
+                        width: '100%',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}
+                    activeOpacity={0.7}
+                >
+                    <Text style={[
+                        styles.dayText,
+                        (future || isOtherMonth) && styles.disabledText,
+                        isOtherMonth && styles.otherMonthText
+                    ]}>
+                        {String(new Date(date).getDate()).padStart(2, '0')}
+                    </Text>
+
+                    {/* FIXED: Refactored emoji rendering to make it more clickable */}
+                    {mood ? (
+                        <View
+                            style={{
+                                minHeight: 36,  // Ensure enough height for the touchable area
+                                minWidth: 36,   // Ensure enough width for the touchable area
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                zIndex: 5      // Ensure this is on top
+                            }}
+                        >
+                            <TouchableOpacity
+                                onPress={(e) => {
+                                    e.stopPropagation && e.stopPropagation();
+                                    handleEmojiPress(date);
+                                }}
+                                style={{
+                                    padding: 8,          // Increase touch target
+                                    borderRadius: 20,    // Rounded touch target
+                                    backgroundColor: 'transparent',
+                                }}
+                                activeOpacity={0.6}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} // Increase hit area
+                            >
+                                <EmojiSVG
+                                    type={mood}
+                                    size={26}
+                                    style={isOtherMonth ? {opacity: 0.5} : {}}
+                                    animated={false}
+                                />
+                            </TouchableOpacity>
                         </View>
-                    </View>
-                ) : future ? (
-                    <View style={styles.placeholderContainer}>
-                        <Text style={[
-                            styles.placeholderEmoji,
-                            styles.emojiShadow
-                        ]}>⚪️</Text>
-                    </View>
-                ) : past ? (
-                    <View style={styles.plusContainer}>
-                        <Text style={[
-                            styles.plusSign,
-                            styles.plusSignShadow,
-                            isOtherMonth && styles.otherMonthPlus
-                        ]}>＋</Text>
+                    ) : future ? (
+                        <Text style={[styles.placeholderEmoji, styles.emojiShadow]}>⚪️</Text>
+                    ) : past ? (
                         <Text style={[
                             styles.plusSign,
                             isOtherMonth && styles.otherMonthPlus
                         ]}>＋</Text>
-                    </View>
-                ) : null}
-            </TouchableOpacity>
+                    ) : null}
+                </TouchableOpacity>
+            </View>
         );
     };
 
-    const renderEntryItem = ({item}: { item: MoodEntry }) => {
+    const renderEntryItem = ({item}: { item: moodApi.MoodEntry }) => {
         return (
             <TouchableOpacity
                 style={styles.entryItem}
@@ -344,9 +329,7 @@ const MoodCalendar = () => {
                 <View style={styles.journalTable}>
                     <View style={styles.journalRow}>
                         <View style={styles.journalEmoticonCell}>
-                            <Text style={styles.journalEmoticonText}>
-                                {item.mood}
-                            </Text>
+                            <EmojiSVG type={item.mood} size={40} animated={true}/>
                         </View>
                         <View style={styles.journalInfoCell}>
                             <Text style={styles.journalDateText}>
@@ -368,7 +351,6 @@ const MoodCalendar = () => {
 
     // Main calendar view
     if (!showEntryListPage) {
-        // @ts-ignore
         return (
             <View style={styles.container}>
                 <Calendar
@@ -439,12 +421,18 @@ const MoodCalendar = () => {
                                 contentContainerStyle={styles.emojiList}
                                 keyExtractor={(item) => item}
                                 renderItem={({item}) => (
-                                    <TouchableOpacity style={styles.emojiOption} onPress={() => handleMoodSelect(item)}>
-                                        <View style={styles.emojiContainer}>
-                                            <Text style={[styles.emoji, styles.emojiShadow]}>{item}</Text>
-                                            <Text style={[styles.emoji, styles.emojiBase]}>{item}</Text>
-                                        </View>
-                                    </TouchableOpacity>
+                                    <Animated.View style={{
+                                        transform: [{scale: emojiScale}],
+                                        margin: 10
+                                    }}>
+                                        <TouchableOpacity
+                                            style={styles.emojiOption}
+                                            onPress={() => handleMoodSelect(item)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <EmojiSVG type={item} size={45} />
+                                        </TouchableOpacity>
+                                    </Animated.View>
                                 )}
                             />
                         </View>
@@ -455,34 +443,46 @@ const MoodCalendar = () => {
                     isVisible={noteModalVisible}
                     onBackdropPress={() => {
                         setNoteModalVisible(false);
-                        setIsEditingNote(false);
-                        setNote('');
+                        setTimeout(() => {
+                            setIsEditingNote(false);
+                            setNote('');
+                        }, 300);
                     }}
                     style={styles.bottomModal}
                     swipeDirection={['down']}
                     onSwipeComplete={() => {
                         setNoteModalVisible(false);
-                        setIsEditingNote(false);
-                        setNote('');
+                        setTimeout(() => {
+                            setIsEditingNote(false);
+                            setNote('');
+                        }, 300);
                     }}
                 >
                     <View style={styles.compactModalContent}>
                         <View style={styles.dragIndicator}/>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>
-                                Edit Note
+                                {isEditingNote ? 'Edit Note' : 'Add a quick note'}
                             </Text>
                             <TouchableOpacity
                                 onPress={() => {
                                     setNoteModalVisible(false);
-                                    setIsEditingNote(false);
-                                    setNote('');
+                                    setTimeout(() => {
+                                        setIsEditingNote(false);
+                                        setNote('');
+                                    }, 300);
                                 }}
                                 style={styles.closeButtonContainer}
                             >
                                 <Text style={styles.closeButton}>×</Text>
                             </TouchableOpacity>
                         </View>
+
+                        {selectedMood && (
+                            <View style={styles.selectedMoodContainer}>
+                                <EmojiSVG type={selectedMood} size={40} animated={true} />
+                            </View>
+                        )}
 
                         <TextInput
                             style={styles.compactTextInput}
@@ -493,13 +493,6 @@ const MoodCalendar = () => {
                         />
 
                         <View style={styles.buttonContainer}>
-                            <TouchableOpacity style={styles.cancelButton} onPress={() => {
-                                setNoteModalVisible(false);
-                                setIsEditingNote(false);
-                                setNote('');
-                            }}>
-                                <Text style={styles.cancelButtonText}>Cancel</Text>
-                            </TouchableOpacity>
                             <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
                                 <Text style={styles.saveButtonText}>Save</Text>
                             </TouchableOpacity>
@@ -533,14 +526,7 @@ const MoodCalendar = () => {
                                             {format(date, 'EEEE, MMMM do yyyy')}
                                         </Text>
                                         {moodMap[dateString]?.mood && (
-                                            <View style={styles.emojiContainer}>
-                                                <Text style={[styles.dateItemMood, styles.emojiShadow]}>
-                                                    {moodMap[dateString].mood}
-                                                </Text>
-                                                <Text style={styles.dateItemMood}>
-                                                    {moodMap[dateString].mood}
-                                                </Text>
-                                            </View>
+                                            <EmojiSVG type={moodMap[dateString].mood} size={30} />
                                         )}
                                     </TouchableOpacity>
                                 );
@@ -587,15 +573,19 @@ const MoodCalendar = () => {
                 isVisible={noteModalVisible}
                 onBackdropPress={() => {
                     setNoteModalVisible(false);
-                    setIsEditingNote(false);
-                    setNote('');
+                    setTimeout(() => {
+                        setIsEditingNote(false);
+                        setNote('');
+                    }, 300);
                 }}
                 style={styles.bottomModal}
                 swipeDirection={['down']}
                 onSwipeComplete={() => {
                     setNoteModalVisible(false);
-                    setIsEditingNote(false);
-                    setNote('');
+                    setTimeout(() => {
+                        setIsEditingNote(false);
+                        setNote('');
+                    }, 300);
                 }}
             >
                 <View style={styles.compactModalContent}>
@@ -607,14 +597,22 @@ const MoodCalendar = () => {
                         <TouchableOpacity
                             onPress={() => {
                                 setNoteModalVisible(false);
-                                setIsEditingNote(false);
-                                setNote('');
+                                setTimeout(() => {
+                                    setIsEditingNote(false);
+                                    setNote('');
+                                }, 300);
                             }}
                             style={styles.closeButtonContainer}
                         >
                             <Text style={styles.closeButton}>×</Text>
                         </TouchableOpacity>
                     </View>
+
+                    {entries[0]?.mood && (
+                        <View style={styles.selectedMoodContainer}>
+                            <EmojiSVG type={entries[0].mood} size={40} animated={true} />
+                        </View>
+                    )}
 
                     <TextInput
                         style={styles.compactTextInput}
@@ -625,13 +623,6 @@ const MoodCalendar = () => {
                     />
 
                     <View style={styles.buttonContainer}>
-                        <TouchableOpacity style={styles.cancelButton} onPress={() => {
-                            setNoteModalVisible(false);
-                            setIsEditingNote(false);
-                            setNote('');
-                        }}>
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
                         <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
                             <Text style={styles.saveButtonText}>Save</Text>
                         </TouchableOpacity>
