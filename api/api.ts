@@ -1,7 +1,12 @@
 // api.ts
 import { Mood } from '@/components/MoodCalendar';
 
-const API_URL = process.env.BACKEND_API_URL || 'http://localhost:3000/api';
+import { Platform } from 'react-native';
+
+const API_URL = process.env.BACKEND_API_URL ||
+    (__DEV__ ?
+        (Platform.OS === 'android' ? 'http://10.0.2.2:3000/api' : 'http://localhost:3000/api') :
+        'https://localhost:3000/api'); // change this to production api later
 
 export type MoodEntry = {
     id?: string;

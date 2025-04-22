@@ -9,6 +9,7 @@ import {
     SafeAreaView,
     ToastAndroid, // For Android
     Platform,
+    StatusBar,
     Dimensions,
     Alert, // For iOS
     Animated, ScrollView,
@@ -19,6 +20,7 @@ import {format, eachDayOfInterval, subYears, startOfMonth, endOfMonth, subMonths
 import styles from '../assets/MoodCalendarStyles';
 import EmojiSVG from './EmojiSVG';
 import * as moodApi from '../api/api';
+import {GestureHandlerRootView, PanGestureHandler} from 'react-native-gesture-handler';
 
 // Define types for moods
 export type Mood = '😲' | '😢' | '😐' | '😀' | '😨' | '🤢' | '😠';
@@ -105,8 +107,25 @@ const MoodCalendar = () => {
         }
     };
 
-    const isPastDate = (date: string) => new Date(date) < new Date(todayStr);
-    const isFutureDate = (date: string) => new Date(date) > new Date(todayStr);
+    const isPastDate = (dateString: string): boolean => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to beginning of the day
+
+        const checkDate = new Date(dateString);
+        checkDate.setHours(0, 0, 0, 0);
+
+        return checkDate < today;
+    };
+
+    const isFutureDate = (dateString: string): boolean => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to beginning of the day
+
+        const checkDate = new Date(dateString);
+        checkDate.setHours(0, 0, 0, 0);
+
+        return checkDate > today;
+    };
 
     // Handle click on any date cell (background)
     const handleDayPress = (date: string) => {
@@ -352,43 +371,57 @@ const MoodCalendar = () => {
     if (!showEntryListPage) {
         return (
             <View style={styles.container}>
-                <Calendar
-                    markingType="custom"
-                    dayComponent={({date, state}: { date: any, state: any }) => renderDay(date.dateString, state)}
-                    onMonthChange={(month: {
-                        dateString: string | number | Date;
-                    }) => setCurrentMonth(new Date(month.dateString))}
-                    theme={{
-                        calendarBackground: '#e3f2fd',
-                        textSectionTitleColor: '#1976d2',
-                        textMonthFontFamily: 'Roboto',
-                        textMonthFontSize: 20,
-                        textMonthFontWeight: 'bold',
-                        textMonthFontColor: '#0d47a1',
-                        'stylesheet.calendar.header': {
-                            header: {
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: 10,
-                                backgroundColor: '#bbdefb',
-                                marginBottom: 10,
+                <Text style={[
+                    styles.pageTitle,
+                    Platform.OS === 'android' && { paddingTop: StatusBar.currentHeight || 20 }
+                ]}>Mood Calendar</Text>
+                <View style={styles.calendarWrapper}>
+                    <Calendar
+                        markingType="custom"
+                        dayComponent={({date, state}: { date: any, state: any }) => renderDay(date.dateString, state)}
+                        onMonthChange={(month: {
+                            dateString: string | number | Date;
+                        }) => setCurrentMonth(new Date(month.dateString))}
+                        theme={{
+                            calendarBackground: '#ffffff',
+                            textSectionTitleColor: '#000000',
+                            textDayFontColor: '#000000',
+                            textMonthFontFamily: 'Roboto',
+                            textMonthFontSize: 20,
+                            textMonthFontWeight: 'bold',
+                            textMonthFontColor: '#0d47a1',
+                            'stylesheet.calendar.header': {
+                                header: {
+                                    flexDirection: 'row',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: 10,
+                                    paddingTop: 15,
+                                    backgroundColor: '#ffffff',
+                                },
+                                dayHeader: {
+                                    color: '#000000',
+                                    fontWeight: '600',
+                                    marginTop: 10,
+                                    marginBottom: 10,
+                                    fontSize: 14
+                                }
                             },
-                        },
-                        'stylesheet.calendar.main': {
-                            week: {
-                                marginTop: 0,
-                                flexDirection: 'row',
-                                justifyContent: 'space-around',
-                                backgroundColor: '#e3f2fd',
-                            }
-                        },
-                        textDisabledColor: '#90a4ae',
-                        arrowColor: '#1976d2',
-                    }}
-                    hideExtraDays={false}
-                />
-
+                            'stylesheet.calendar.main': {
+                                week: {
+                                    marginVertical: 2,
+                                    flexDirection: 'row',
+                                    justifyContent: 'space-around',
+                                    backgroundColor: '#ffffff',
+                                }
+                            },
+                            textDisabledColor: '#90a4ae',
+                            arrowColor: '#1976d2',
+                        }}
+                        hideExtraDays={false}
+                        style={{height: 'auto'}}
+                    />
+                </View>
                 <Modal
                     isVisible={isModalVisible}
                     onBackdropPress={() => setIsModalVisible(false)}
@@ -429,7 +462,7 @@ const MoodCalendar = () => {
                                     <Animated.View
                                         key={item}
                                         style={{
-                                            transform: [{ scale: emojiScale }],
+                                            transform: [{scale: emojiScale}],
                                             margin: Dimensions.get('window').width < 375 ? 4 : 6,
                                             // Adjust width based on screen size for better responsiveness
                                             width: Dimensions.get('window').width < 375 ?
@@ -558,96 +591,112 @@ const MoodCalendar = () => {
 
     // Entry list page for selected date only
     return (
-        <SafeAreaView style={styles.entryListContainer}>
-            <View style={styles.entryListHeader}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => setShowEntryListPage(false)}
-                >
-                    <Text style={styles.backButtonText}>← Back</Text>
-                </TouchableOpacity>
-                <Text style={styles.entryListTitle}>
-                    {format(selectedDate || '', 'EEEE, MMMM do yyyy')}
-                </Text>
-                <View style={styles.placeholder}/>
-            </View>
-
-            <FlatList
-                data={entries}
-                renderItem={renderEntryItem}
-                keyExtractor={(item) => item.date}
-                contentContainerStyle={styles.entryListContent}
-                ItemSeparatorComponent={() => <View style={styles.entrySeparator}/>}
-                ListEmptyComponent={
-                    <View style={styles.journalTable}>
-                        <Text style={{textAlign: 'center', padding: 20, color: '#7f8c8d'}}>
-                            No entry for this date
-                        </Text>
-                    </View>
-                }
-            />
-
-            <Modal
-                isVisible={noteModalVisible}
-                onBackdropPress={() => {
-                    setNoteModalVisible(false);
-                    setTimeout(() => {
-                        setIsEditingNote(false);
-                        setNote('');
-                    }, 300);
-                }}
-                style={styles.bottomModal}
-                swipeDirection={['down']}
-                onSwipeComplete={() => {
-                    setNoteModalVisible(false);
-                    setTimeout(() => {
-                        setIsEditingNote(false);
-                        setNote('');
-                    }, 300);
+        <GestureHandlerRootView style={{flex: 1}}>
+            <PanGestureHandler
+                onGestureEvent={(event) => {
+                    // Only trigger on right-to-left swipe with sufficient distance
+                    if (event.nativeEvent.translationX > 100) {
+                        setShowEntryListPage(false);
+                    }
                 }}
             >
-                <View style={styles.compactModalContent}>
-                    <View style={styles.dragIndicator}/>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>
-                            {isEditingNote ? 'Edit Note' : 'Add a quick note'}
-                        </Text>
+                <SafeAreaView style={styles.entryListContainer}>
+                    {/* Add status bar padding for Android */}
+                    <View style={[
+                        styles.entryListHeader,
+                        Platform.OS === 'android' && {paddingTop: StatusBar.currentHeight || 20}
+                    ]}>
                         <TouchableOpacity
-                            onPress={() => {
-                                setNoteModalVisible(false);
-                                setTimeout(() => {
-                                    setIsEditingNote(false);
-                                    setNote('');
-                                }, 300);
-                            }}
-                            style={styles.closeButtonContainer}
+                            style={styles.backButton}
+                            onPress={() => setShowEntryListPage(false)}
+                            hitSlop={{top: 15, bottom: 15, left: 15, right: 15}}
                         >
-                            <Text style={styles.closeButton}>×</Text>
+                            <Text style={styles.backButtonText}>← Back</Text>
                         </TouchableOpacity>
+                        <Text style={styles.entryListTitle}>
+                            {format(selectedDate || '', 'EEEE, MMMM do yyyy')}
+                        </Text>
+                        <View style={styles.placeholder}/>
                     </View>
 
-                    {entries[0]?.mood && (
-                        <View style={styles.selectedMoodContainer}>
-                            <EmojiSVG type={entries[0].mood} size={40} animated={true}/>
-                        </View>
-                    )}
-
-                    <TextInput
-                        style={styles.compactTextInput}
-                        value={note}
-                        onChangeText={setNote}
-                        placeholder="Write a note..."
-                        multiline
+                    <FlatList
+                        data={entries}
+                        renderItem={renderEntryItem}
+                        keyExtractor={(item) => item.date}
+                        contentContainerStyle={styles.entryListContent}
+                        ItemSeparatorComponent={() => <View style={styles.entrySeparator}/>}
+                        ListEmptyComponent={
+                            <View style={styles.journalTable}>
+                                <Text style={{textAlign: 'center', padding: 20, color: '#7f8c8d'}}>
+                                    No entry for this date
+                                </Text>
+                            </View>
+                        }
                     />
 
-                    <View style={styles.buttonContainer}>
-                        <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
-                            <Text style={styles.saveButtonText}>Save</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-        </SafeAreaView>
+                    <Modal
+                        isVisible={noteModalVisible}
+                        onBackdropPress={() => {
+                            setNoteModalVisible(false);
+                            setTimeout(() => {
+                                setIsEditingNote(false);
+                                setNote('');
+                            }, 300);
+                        }}
+                        style={styles.bottomModal}
+                        swipeDirection={['down']}
+                        onSwipeComplete={() => {
+                            setNoteModalVisible(false);
+                            setTimeout(() => {
+                                setIsEditingNote(false);
+                                setNote('');
+                            }, 300);
+                        }}
+                    >
+                        <View style={styles.compactModalContent}>
+                            <View style={styles.dragIndicator}/>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>
+                                    {isEditingNote ? 'Edit Note' : 'Add a quick note'}
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setNoteModalVisible(false);
+                                        setTimeout(() => {
+                                            setIsEditingNote(false);
+                                            setNote('');
+                                        }, 300);
+                                    }}
+                                    style={styles.closeButtonContainer}
+                                >
+                                    <Text style={styles.closeButton}>×</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {entries[0]?.mood && (
+                                <View style={styles.selectedMoodContainer}>
+                                    <EmojiSVG type={entries[0].mood} size={40} animated={true}/>
+                                </View>
+                            )}
+
+                            <TextInput
+                                style={styles.compactTextInput}
+                                value={note}
+                                onChangeText={setNote}
+                                placeholder="Write a note..."
+                                multiline
+                            />
+
+                            <View style={styles.buttonContainer}>
+                                <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
+                                    <Text style={styles.saveButtonText}>Save</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Modal>
+                </SafeAreaView>
+            </PanGestureHandler>
+        </GestureHandlerRootView>
     );
 };
 

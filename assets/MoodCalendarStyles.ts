@@ -1,12 +1,37 @@
-import { StyleSheet } from 'react-native';
+import {StyleSheet} from 'react-native';
 
 const styles = StyleSheet.create({
     container: {
-        margin: 10,
-        borderRadius: 10,
-        overflow: 'hidden',
-        backgroundColor: '#e3f2fd',
+        flex: 1,
+        backgroundColor: '#FADADD',
+        paddingTop: 40,
         paddingBottom: 30
+    },
+    pageTitle: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 15,
+        color: '#000000',
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: {width: 1, height: 1},
+        textShadowRadius: 2,
+    },
+    calendarWrapper: {
+        width: '90%',
+        alignSelf: 'center',
+        borderRadius: 16,
+        overflow: 'hidden',
+        backgroundColor: '#ffffff',
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+        marginTop: 10,
+        marginBottom: 15,
+        paddingTop: 10,
+        paddingBottom: 15,
     },
     modalContent: {
         backgroundColor: 'white',
@@ -14,7 +39,6 @@ const styles = StyleSheet.create({
         padding: 20,
         width: '90%',
     },
-    // New styles for the updated journal entry modal
     detailsModalContent: {
         backgroundColor: 'white',
         borderRadius: 12,
@@ -66,16 +90,17 @@ const styles = StyleSheet.create({
         lineHeight: 24,
     },
     dayCell: {
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        height: 72,
+        height: 66,
         width: '100%',
-        padding: 5,
+        padding: 2,
+        paddingVertical: 4,
     },
     dayText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '500',
-        color: '#333',
+        color: '#000000',
         marginTop: 2,
     },
     plusCircle: {
@@ -86,7 +111,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 1, height: 1 },
+        shadowOffset: {width: 1, height: 1},
         shadowOpacity: 0.15,
         shadowRadius: 1,
         elevation: 2,
@@ -99,7 +124,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 1, height: 1 },
+        shadowOffset: {width: 1, height: 1},
         shadowOpacity: 0.2,
         shadowRadius: 2,
         elevation: 3,
@@ -116,7 +141,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 1, height: 1 },
+        shadowOffset: {width: 1, height: 1},
         shadowOpacity: 0.2,
         shadowRadius: 2,
         elevation: 3,
@@ -153,7 +178,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 2, height: 2 },
+        shadowOffset: {width: 2, height: 2},
         shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 8,
@@ -221,7 +246,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '600',
         textAlign: 'center',
-        color: '#0d47a1',
+        color: '#000000',
     },
     closeButtonContainer: {
         position: 'absolute',
@@ -229,7 +254,7 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         fontSize: 28,
-        color: '#1976d2',
+        color: '#000000',
         paddingHorizontal: 10,
     },
     dateText: {
@@ -238,12 +263,6 @@ const styles = StyleSheet.create({
         color: '#1976d2',
         textDecorationLine: 'underline',
     },
-    // emojiList: {
-    //     paddingHorizontal: 16,
-    // },
-    // emojiOption: {
-    //     paddingHorizontal: 8,
-    // },
     textInput: {
         width: '100%',
         borderColor: '#90caf9',
@@ -294,7 +313,7 @@ const styles = StyleSheet.create({
         borderColor: '#90caf9',
     },
     saveButton: {
-        backgroundColor: '#1976d2',
+        backgroundColor: '#BA5F5F',
         padding: 12,
         borderRadius: 10,
         width: '45%',
@@ -328,21 +347,21 @@ const styles = StyleSheet.create({
     },
     dateItemText: {
         fontSize: 16,
-        color: '#1976d2',
+        color: '#000000',
     },
     dateItemMood: {
         fontSize: 24,
     },
     entryListContainer: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#FADADD',
     },
     entryListHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
-        backgroundColor: '#bbdefb',
+        backgroundColor: '#BA5F5F',
         borderBottomWidth: 1,
         borderBottomColor: '#90caf9',
     },
@@ -350,17 +369,17 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     backButtonText: {
-        color: '#1976d2',
+        color: '#000000',
         fontSize: 16,
         fontWeight: '500',
     },
     entryListTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#0d47a1',
+        color: '#000000',
     },
     placeholder: {
-        width: 80, // Match width of back button for balanced header
+        width: 80,
     },
     entryListContent: {
         padding: 12,
@@ -374,12 +393,10 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#e0e0e0',
-        // Shadow for iOS
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: {width: 0, height: 1},
         shadowOpacity: 0.2,
         shadowRadius: 1.5,
-        // Elevation for Android
         elevation: 2,
     },
     entriesButton: {
@@ -422,12 +439,12 @@ const styles = StyleSheet.create({
     journalDateText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#2d4150',
+        color: '#000000',
         marginBottom: 8,
     },
     journalNoteText: {
         fontSize: 14,
-        color: '#7f8c8d',
+        color: '#000000',
         lineHeight: 20,
     },
     compactModalContent: {
@@ -469,7 +486,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     compactTextInput: {
-        borderColor: '#90caf9',
+        borderColor: '#BA5F5F',
         borderWidth: 1,
         borderRadius: 10,
         padding: 12,
@@ -487,7 +504,7 @@ const styles = StyleSheet.create({
     },
     moodCircleEnhanced: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
+        shadowOffset: {width: 0, height: 3},
         shadowOpacity: 0.27,
         shadowRadius: 4.65,
         elevation: 6,
