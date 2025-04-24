@@ -263,77 +263,88 @@ const MoodCalendar = () => {
         const future = isFutureDate(date);
         const isOtherMonth = state === 'disabled';
 
-        return (
-            <View style={styles.dayCell}>
-                <TouchableOpacity
-                    onPress={() => handleDayPress(date)}
-                    disabled={future}
-                    style={{
-                        flex: 1,
-                        width: '100%',
-                        justifyContent: 'center',
-                        alignItems: 'center'
-                    }}
-                    activeOpacity={0.7}
-                >
-                    {mood ? (
-                        <View
-                            style={{
-                                height: 36,
-                                width: 36,
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                zIndex: 5,
-                                marginBottom: 10
-                            }}
-                        >
-                            <TouchableOpacity
-                                onPress={(e) => {
-                                    e.stopPropagation && e.stopPropagation();
-                                    handleEmojiPress(date);
-                                }}
-                                style={{
-                                    padding: 8,
-                                    borderRadius: 20,
-                                    backgroundColor: 'transparent',
-                                }}
-                                activeOpacity={0.6}
-                                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
-                            >
-                                <EmojiSVG
-                                    type={mood}
-                                    size={36}
-                                    style={isOtherMonth ? {opacity: 0.5} : {}}
-                                    animated={false}
-                                />
-                            </TouchableOpacity>
-                        </View>
-                    ) : future ? (
-                        <View style={{height: 36, marginBottom: 10}}>
-                            <Text style={styles.plusCircle}></Text>
-                        </View>
-                    ) : past ? (
-                        <TouchableOpacity
-                            style={[styles.plusCircle, {marginBottom: 10}]}
-                            onPress={() => handleDayPress(date)}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={[
-                                styles.plusSign,
-                                isOtherMonth && styles.otherMonthPlus
-                            ]}>＋</Text>
-                        </TouchableOpacity>
-                    ) : null}
+        // Track if emoji was pressed to prevent double event firing
+        const emojiPressedRef = React.useRef(false);
 
-                    <Text style={[
-                        styles.dayText,
-                        (future || isOtherMonth) && styles.disabledText,
-                        isOtherMonth && styles.otherMonthText
-                    ]}>
-                        {String(new Date(date).getDate()).padStart(2, '0')}
-                    </Text>
-                </TouchableOpacity>
-            </View>
+        return (
+            <TouchableOpacity
+                onPress={() => {
+                    // Only process the day press if emoji wasn't pressed
+                    if (!emojiPressedRef.current) {
+                        handleDayPress(date);
+                    }
+                    // Reset the ref for next press
+                    emojiPressedRef.current = false;
+                }}
+                disabled={future}
+                style={styles.dayCell}
+                activeOpacity={0.7}
+            >
+                {mood ? (
+                    <View style={{
+                        height: 36,
+                        width: 36,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 5,
+                        marginBottom: 10
+                    }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                // Mark that emoji was pressed
+                                emojiPressedRef.current = true;
+                                // Add slight delay to ensure parent's onPress doesn't fire
+                                setTimeout(() => {
+                                    handleEmojiPress(date);
+                                }, 10);
+                            }}
+                            style={{
+                                padding: 8,
+                                borderRadius: 20,
+                                backgroundColor: 'transparent',
+                            }}
+                            activeOpacity={0.6}
+                            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+                        >
+                            <EmojiSVG
+                                type={mood}
+                                size={36}
+                                style={isOtherMonth ? {opacity: 0.5} : {}}
+                                animated={false}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                ) : future ? (
+                    <View style={{height: 36, marginBottom: 10}}>
+                        <Text style={styles.plusCircle}></Text>
+                    </View>
+                ) : past ? (
+                    <TouchableOpacity
+                        style={[styles.plusCircle, {marginBottom: 10}]}
+                        onPress={() => {
+                            // Mark that plus was pressed
+                            emojiPressedRef.current = true;
+                            setTimeout(() => {
+                                handleDayPress(date);
+                            }, 10);
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={[
+                            styles.plusSign,
+                            isOtherMonth && styles.otherMonthPlus
+                        ]}>＋</Text>
+                    </TouchableOpacity>
+                ) : null}
+
+                <Text style={[
+                    styles.dayText,
+                    (future || isOtherMonth) && styles.disabledText,
+                    isOtherMonth && styles.otherMonthText
+                ]}>
+                    {String(new Date(date).getDate()).padStart(2, '0')}
+                </Text>
+            </TouchableOpacity>
         );
     };
 
