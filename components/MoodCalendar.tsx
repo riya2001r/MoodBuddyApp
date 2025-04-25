@@ -12,7 +12,7 @@ import {
     StatusBar,
     Dimensions,
     Alert, // For iOS
-    Animated, ScrollView,
+    Animated, ScrollView, TouchableWithoutFeedback,
 } from 'react-native';
 import {Calendar} from 'react-native-calendars';
 import Modal from 'react-native-modal';
@@ -234,9 +234,11 @@ const MoodCalendar = () => {
                 setSelectedMood(null);
                 setIsEditingNote(false);
             }
+            return true;
         } catch (error) {
             console.error('Error saving mood:', error);
             showToast('Something went wrong!!!');
+            return false;
         }
     };
 
@@ -519,47 +521,79 @@ const MoodCalendar = () => {
                             setNote('');
                         }, 300);
                     }}
+                    // Improve animation performance
+                    animationInTiming={300}
+                    animationOutTiming={300}
+                    backdropTransitionInTiming={300}
+                    backdropTransitionOutTiming={300}
+                    useNativeDriver={true}
+                    // Prevent modal interactions during animation
+                    propagateSwipe={true}
                 >
-                    <View style={styles.compactModalContent}>
-                        <View style={styles.dragIndicator}/>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>
-                                {isEditingNote ? 'Edit Note' : 'Add a quick note'}
-                            </Text>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setNoteModalVisible(false);
-                                    setTimeout(() => {
-                                        setIsEditingNote(false);
-                                        setNote('');
-                                    }, 300);
-                                }}
-                                style={styles.closeButtonContainer}
-                            >
-                                <Text style={styles.closeButton}>×</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {selectedMood && (
-                            <View style={styles.selectedMoodContainer}>
-                                <EmojiSVG type={selectedMood} size={40} animated={true}/>
+                    <TouchableWithoutFeedback>
+                        <View style={styles.compactModalContent}>
+                            <View style={styles.dragIndicator}/>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>
+                                    {isEditingNote ? 'Edit Note' : 'Add a quick note'}
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setNoteModalVisible(false);
+                                        setTimeout(() => {
+                                            setIsEditingNote(false);
+                                            setNote('');
+                                        }, 300);
+                                    }}
+                                    style={styles.closeButtonContainer}
+                                    hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+                                >
+                                    <Text style={styles.closeButton}>×</Text>
+                                </TouchableOpacity>
                             </View>
-                        )}
 
-                        <TextInput
-                            style={styles.compactTextInput}
-                            value={note}
-                            onChangeText={setNote}
-                            placeholder="Write a note..."
-                            multiline
-                        />
+                            {selectedMood && (
+                                <View style={styles.selectedMoodContainer}>
+                                    <EmojiSVG type={selectedMood} size={40} animated={true}/>
+                                </View>
+                            )}
 
-                        <View style={styles.buttonContainer}>
-                            <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
-                                <Text style={styles.saveButtonText}>Save</Text>
-                            </TouchableOpacity>
+                            <TextInput
+                                style={styles.compactTextInput}
+                                value={note}
+                                onChangeText={setNote}
+                                placeholder="Write a note..."
+                                multiline
+                                returnKeyType="done"
+                            />
+
+                            <View style={styles.buttonContainer}>
+                                <TouchableOpacity
+                                    style={styles.saveButton}
+                                    onPress={async () => {
+                                        // First save the data
+                                        const saveResult = await saveMoodAndNote();
+
+                                        // Then handle modal closing separately
+                                        if (saveResult !== false) { // Assuming saveMoodAndNote returns false if save fails
+                                            // Slight delay before closing modal
+                                            requestAnimationFrame(() => {
+                                                setNoteModalVisible(false);
+                                                setTimeout(() => {
+                                                    setIsEditingNote(false);
+                                                    setNote('');
+                                                }, 300);
+                                            });
+                                        }
+                                    }}
+                                    activeOpacity={0.7}
+                                    hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+                                >
+                                    <Text style={styles.saveButtonText}>Save</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    </View>
+                    </TouchableWithoutFeedback>
                 </Modal>
 
                 <Modal isVisible={isDatePickerVisible}>
@@ -663,47 +697,79 @@ const MoodCalendar = () => {
                                 setNote('');
                             }, 300);
                         }}
+                        // Improve animation performance
+                        animationInTiming={300}
+                        animationOutTiming={300}
+                        backdropTransitionInTiming={300}
+                        backdropTransitionOutTiming={300}
+                        useNativeDriver={true}
+                        // Prevent modal interactions during animation
+                        propagateSwipe={true}
                     >
-                        <View style={styles.compactModalContent}>
-                            <View style={styles.dragIndicator}/>
-                            <View style={styles.modalHeader}>
-                                <Text style={styles.modalTitle}>
-                                    {isEditingNote ? 'Edit Note' : 'Add a quick note'}
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        setNoteModalVisible(false);
-                                        setTimeout(() => {
-                                            setIsEditingNote(false);
-                                            setNote('');
-                                        }, 300);
-                                    }}
-                                    style={styles.closeButtonContainer}
-                                >
-                                    <Text style={styles.closeButton}>×</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {entries[0]?.mood && (
-                                <View style={styles.selectedMoodContainer}>
-                                    <EmojiSVG type={entries[0].mood} size={40} animated={true}/>
+                        <TouchableWithoutFeedback>
+                            <View style={styles.compactModalContent}>
+                                <View style={styles.dragIndicator}/>
+                                <View style={styles.modalHeader}>
+                                    <Text style={styles.modalTitle}>
+                                        {isEditingNote ? 'Edit Note' : 'Add a quick note'}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setNoteModalVisible(false);
+                                            setTimeout(() => {
+                                                setIsEditingNote(false);
+                                                setNote('');
+                                            }, 300);
+                                        }}
+                                        style={styles.closeButtonContainer}
+                                        hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+                                    >
+                                        <Text style={styles.closeButton}>×</Text>
+                                    </TouchableOpacity>
                                 </View>
-                            )}
 
-                            <TextInput
-                                style={styles.compactTextInput}
-                                value={note}
-                                onChangeText={setNote}
-                                placeholder="Write a note..."
-                                multiline
-                            />
+                                {selectedMood && (
+                                    <View style={styles.selectedMoodContainer}>
+                                        <EmojiSVG type={selectedMood} size={40} animated={true}/>
+                                    </View>
+                                )}
 
-                            <View style={styles.buttonContainer}>
-                                <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
-                                    <Text style={styles.saveButtonText}>Save</Text>
-                                </TouchableOpacity>
+                                <TextInput
+                                    style={styles.compactTextInput}
+                                    value={note}
+                                    onChangeText={setNote}
+                                    placeholder="Write a note..."
+                                    multiline
+                                    returnKeyType="done"
+                                />
+
+                                <View style={styles.buttonContainer}>
+                                    <TouchableOpacity
+                                        style={styles.saveButton}
+                                        onPress={async () => {
+                                            // First save the data
+                                            const saveResult = await saveMoodAndNote();
+
+                                            // Then handle modal closing separately
+                                            if (saveResult !== false) { // Assuming saveMoodAndNote returns false if save fails
+                                                // Slight delay before closing modal
+                                                requestAnimationFrame(() => {
+                                                    setNoteModalVisible(false);
+                                                    setTimeout(() => {
+                                                        setIsEditingNote(false);
+                                                        setNote('');
+                                                    }, 300);
+                                                });
+                                            }
+                                        }}
+                                        activeOpacity={0.7}
+                                        hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+                                    >
+                                        <Text style={styles.saveButtonText}>Save</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
+                        </TouchableWithoutFeedback>
                     </Modal>
                 </SafeAreaView>
             </PanGestureHandler>
