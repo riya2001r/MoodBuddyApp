@@ -323,6 +323,12 @@ const styles = StyleSheet.create({
         color: '#0d47a1',
         fontWeight: 'bold',
     },
+    disabledButton: {
+        backgroundColor: '#a0b8dc',
+        opacity: 0.7,
+        elevation: 0,
+        shadowOpacity: 0,
+    },
     saveButtonText: {
         color: '#fff',
         fontWeight: 'bold',

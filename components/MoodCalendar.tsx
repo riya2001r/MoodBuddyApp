@@ -1,5 +1,5 @@
 // MoodCalendar.tsx
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
     View,
     Text,
@@ -26,6 +26,17 @@ import {GestureHandlerRootView, PanGestureHandler} from 'react-native-gesture-ha
 export type Mood = '😲' | '😢' | '😐' | '😀' | '😨' | '🤢' | '😠';
 
 const emojis: Mood[] = ['😲', '😢', '😐', '😀', '😨', '🤢', '😠'];
+
+// Map emoji to display text
+const emojiTextMap: Record<Mood, string> = {
+    '😲': 'surprise',
+    '😢': 'sad',
+    '😐': 'neutral',
+    '😀': 'happy',
+    '😨': 'fear',
+    '🤢': 'disgust',
+    '😠': 'angry'
+};
 
 // Function to show toast message across platforms
 const showToast = (message: string) => {
@@ -74,6 +85,7 @@ const MoodCalendar = () => {
     const [showEntryListPage, setShowEntryListPage] = useState(false);
     const [entries, setEntries] = useState<moodApi.MoodEntry[]>([]);
     const [emojiScale] = useState(new Animated.Value(1));
+    const [isSaving, setIsSaving] = useState(false);
 
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
@@ -125,6 +137,16 @@ const MoodCalendar = () => {
         checkDate.setHours(0, 0, 0, 0);
 
         return checkDate > today;
+    };
+
+    const isCurrentDate = (dateString: string): boolean => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to beginning of the day
+
+        const checkDate = new Date(dateString);
+        checkDate.setHours(0, 0, 0, 0);
+
+        return checkDate.getTime() === today.getTime();
     };
 
     // Handle click on any date cell (background)
@@ -193,9 +215,21 @@ const MoodCalendar = () => {
         setIsEditingNote(true);
     };
 
-    const saveMoodAndNote = async () => {
-        if (!selectedDate) return;
+    const closeNoteModal = useCallback(() => {
+        setNoteModalVisible(false);
+        setTimeout(() => {
+            setIsEditingNote(false);
+            if (!showEntryListPage) {
+                setNote('');
+                setSelectedMood(null);
+            }
+        }, 300);
+    }, [showEntryListPage]);
 
+    const saveMoodAndNote = useCallback(async () => {
+        if (!selectedDate || isSaving) return;
+
+        setIsSaving(true);
         try {
             if (selectedMood && !moodMap[selectedDate]?.id) {
                 await moodApi.createMoodEntry(selectedDate, selectedMood, note);
@@ -223,22 +257,18 @@ const MoodCalendar = () => {
             // Now fetch the latest data from API to ensure everything is synced
             await fetchMoodData();
 
-            setNoteModalVisible(false);
-
             // Show success message
             showToast(moodMap[selectedDate]?.id ? 'Note updated successfully!' : 'Mood saved successfully!');
 
-            // Keep the note value in the state if we're staying on the same page
-            if (!showEntryListPage) {
-                setNote('');
-                setSelectedMood(null);
-                setIsEditingNote(false);
-            }
+            // Close the modal
+            closeNoteModal();
         } catch (error) {
             console.error('Error saving mood:', error);
             showToast('Something went wrong!!!');
+        } finally {
+            setIsSaving(false);
         }
-    };
+    }, [selectedDate, selectedMood, note, moodMap, showEntryListPage, closeNoteModal]);
 
     const getModalTitle = () => {
         if (!selectedDate) return 'How were you?';
@@ -261,6 +291,7 @@ const MoodCalendar = () => {
         const mood = entry?.mood;
         const past = isPastDate(date);
         const future = isFutureDate(date);
+        const current = isCurrentDate(date);
         const isOtherMonth = state === 'disabled';
 
         // Track if emoji was pressed to prevent double event firing
@@ -318,7 +349,7 @@ const MoodCalendar = () => {
                     <View style={{height: 36, marginBottom: 10}}>
                         <Text style={styles.plusCircle}></Text>
                     </View>
-                ) : past ? (
+                ) : past || current ? (
                     <TouchableOpacity
                         style={[styles.plusCircle, {marginBottom: 10}]}
                         onPress={() => {
@@ -384,7 +415,7 @@ const MoodCalendar = () => {
             <View style={styles.container}>
                 <Text style={[
                     styles.pageTitle,
-                    Platform.OS === 'android' && { paddingTop: StatusBar.currentHeight || 20 }
+                    Platform.OS === 'android' && {paddingTop: StatusBar.currentHeight || 20}
                 ]}>Mood Calendar</Text>
                 <View style={styles.calendarWrapper}>
                     <Calendar
@@ -493,6 +524,14 @@ const MoodCalendar = () => {
                                                 type={item}
                                                 size={Dimensions.get('window').width < 375 ? 38 : 45}
                                             />
+                                            <Text style={{
+                                                fontSize: 12,
+                                                marginTop: 6,
+                                                textAlign: 'center',
+                                                color: '#666'
+                                            }}>
+                                                {emojiTextMap[item]}
+                                            </Text>
                                         </TouchableOpacity>
                                     </Animated.View>
                                 ))}
@@ -503,22 +542,12 @@ const MoodCalendar = () => {
 
                 <Modal
                     isVisible={noteModalVisible}
-                    onBackdropPress={() => {
-                        setNoteModalVisible(false);
-                        setTimeout(() => {
-                            setIsEditingNote(false);
-                            setNote('');
-                        }, 300);
-                    }}
+                    onBackdropPress={closeNoteModal}
                     style={styles.bottomModal}
                     swipeDirection={['down']}
-                    onSwipeComplete={() => {
-                        setNoteModalVisible(false);
-                        setTimeout(() => {
-                            setIsEditingNote(false);
-                            setNote('');
-                        }, 300);
-                    }}
+                    onSwipeComplete={closeNoteModal}
+                    useNativeDriverForBackdrop={Platform.OS === 'ios'}
+                    avoidKeyboard={true}
                 >
                     <View style={styles.compactModalContent}>
                         <View style={styles.dragIndicator}/>
@@ -527,13 +556,7 @@ const MoodCalendar = () => {
                                 {isEditingNote ? 'Edit Note' : 'Add a quick note'}
                             </Text>
                             <TouchableOpacity
-                                onPress={() => {
-                                    setNoteModalVisible(false);
-                                    setTimeout(() => {
-                                        setIsEditingNote(false);
-                                        setNote('');
-                                    }, 300);
-                                }}
+                                onPress={closeNoteModal}
                                 style={styles.closeButtonContainer}
                             >
                                 <Text style={styles.closeButton}>×</Text>
@@ -543,6 +566,14 @@ const MoodCalendar = () => {
                         {selectedMood && (
                             <View style={styles.selectedMoodContainer}>
                                 <EmojiSVG type={selectedMood} size={40} animated={true}/>
+                                <Text style={{
+                                    fontSize: 14,
+                                    marginTop: 4,
+                                    textAlign: 'center',
+                                    color: '#666'
+                                }}>
+                                    {emojiTextMap[selectedMood]}
+                                </Text>
                             </View>
                         )}
 
@@ -555,14 +586,23 @@ const MoodCalendar = () => {
                         />
 
                         <View style={styles.buttonContainer}>
-                            <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
-                                <Text style={styles.saveButtonText}>Save</Text>
+                            <TouchableOpacity
+                                style={[styles.saveButton, isSaving && styles.disabledButton]}
+                                onPress={saveMoodAndNote}
+                                disabled={isSaving}
+                            >
+                                <Text style={styles.saveButtonText}>
+                                    {isSaving ? 'Saving...' : 'Save'}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </Modal>
 
-                <Modal isVisible={isDatePickerVisible}>
+                <Modal
+                    isVisible={isDatePickerVisible}
+                    useNativeDriverForBackdrop={Platform.OS === 'ios'}
+                >
                     <View style={styles.datePickerModal}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select a Date</Text>
@@ -588,7 +628,16 @@ const MoodCalendar = () => {
                                             {format(date, 'EEEE, MMMM do yyyy')}
                                         </Text>
                                         {moodMap[dateString]?.mood && (
-                                            <EmojiSVG type={moodMap[dateString].mood} size={30}/>
+                                            <View style={{alignItems: 'center'}}>
+                                                <EmojiSVG type={moodMap[dateString].mood} size={30}/>
+                                                <Text style={{
+                                                    fontSize: 12,
+                                                    marginTop: 2,
+                                                    color: '#666'
+                                                }}>
+                                                    {emojiTextMap[moodMap[dateString].mood]}
+                                                </Text>
+                                            </View>
                                         )}
                                     </TouchableOpacity>
                                 );
@@ -647,22 +696,12 @@ const MoodCalendar = () => {
 
                     <Modal
                         isVisible={noteModalVisible}
-                        onBackdropPress={() => {
-                            setNoteModalVisible(false);
-                            setTimeout(() => {
-                                setIsEditingNote(false);
-                                setNote('');
-                            }, 300);
-                        }}
+                        onBackdropPress={closeNoteModal}
                         style={styles.bottomModal}
                         swipeDirection={['down']}
-                        onSwipeComplete={() => {
-                            setNoteModalVisible(false);
-                            setTimeout(() => {
-                                setIsEditingNote(false);
-                                setNote('');
-                            }, 300);
-                        }}
+                        onSwipeComplete={closeNoteModal}
+                        useNativeDriverForBackdrop={Platform.OS === 'ios'}
+                        avoidKeyboard={true}
                     >
                         <View style={styles.compactModalContent}>
                             <View style={styles.dragIndicator}/>
@@ -671,13 +710,7 @@ const MoodCalendar = () => {
                                     {isEditingNote ? 'Edit Note' : 'Add a quick note'}
                                 </Text>
                                 <TouchableOpacity
-                                    onPress={() => {
-                                        setNoteModalVisible(false);
-                                        setTimeout(() => {
-                                            setIsEditingNote(false);
-                                            setNote('');
-                                        }, 300);
-                                    }}
+                                    onPress={closeNoteModal}
                                     style={styles.closeButtonContainer}
                                 >
                                     <Text style={styles.closeButton}>×</Text>
@@ -687,6 +720,14 @@ const MoodCalendar = () => {
                             {entries[0]?.mood && (
                                 <View style={styles.selectedMoodContainer}>
                                     <EmojiSVG type={entries[0].mood} size={40} animated={true}/>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        marginTop: 4,
+                                        textAlign: 'center',
+                                        color: '#666'
+                                    }}>
+                                        {entries[0].mood && emojiTextMap[entries[0].mood]}
+                                    </Text>
                                 </View>
                             )}
 
@@ -699,8 +740,14 @@ const MoodCalendar = () => {
                             />
 
                             <View style={styles.buttonContainer}>
-                                <TouchableOpacity style={styles.saveButton} onPress={saveMoodAndNote}>
-                                    <Text style={styles.saveButtonText}>Save</Text>
+                                <TouchableOpacity
+                                    style={[styles.saveButton, isSaving && styles.disabledButton]}
+                                    onPress={saveMoodAndNote}
+                                    disabled={isSaving}
+                                >
+                                    <Text style={styles.saveButtonText}>
+                                        {isSaving ? 'Saving...' : 'Save'}
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
